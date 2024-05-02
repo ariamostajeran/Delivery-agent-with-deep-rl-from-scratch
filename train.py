@@ -8,7 +8,8 @@ from tqdm import trange
 
 try:
     from world import Environment
-    from agents.random_agent import RandomAgent
+    from agents.mc_agent import MonteCarloAgent
+
 except ModuleNotFoundError:
     from os import path
     from os import pardir
@@ -45,29 +46,43 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
     """Main loop of the program."""
 
     for grid in grid_paths:
-        
+        n_gen_steps = 50
         # Set up the environment
-        env = Environment(grid, no_gui,sigma=sigma, target_fps=fps, 
+        env = Environment(grid, no_gui, sigma=sigma, target_fps=fps, 
                           random_seed=random_seed)
-        
+    
+        grid_shape = env.grid.shape
+        num_states = grid_shape[0] * grid_shape[1]
+
         # Initialize agent
-        agent = RandomAgent()
-        
-        # Always reset the environment to initial state
-        state = env.reset()
+        agent = MonteCarloAgent(num_states, 4, grid_width = grid_shape[1])
+
         for _ in trange(iters):
-            
-            # Agent takes an action based on the latest observation and info.
-            action = agent.take_action(state)
+            # Place agent randomly on grid (exploring starts)
+            state = env.reset()
 
-            # The action is performed in the environment
-            state, reward, terminated, info = env.step(action)
-            
-            # If the final state is reached, stop.
-            if terminated:
-                break
+            # List to store state-action history and corresponding rewards
+            state_action_reward_list = []
 
-            agent.update(state, reward, info["actual_action"])
+            for step in range(n_gen_steps):
+                
+                # First action will always be random
+                if step == 0:
+                    action = agent.take_random_action(state)
+
+                # Remaining actions are greedy
+                else: 
+                    action = agent.take_action(state)
+
+                previous_state = state
+                state, reward, terminated, _ = env.step(action)
+                state_action_reward_list.append((previous_state, action, reward))
+
+                # If the final state is reached, stop.
+                if terminated:
+                    break
+
+            agent.update(state_action_reward_list)
 
         # Evaluate the agent
         Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed)

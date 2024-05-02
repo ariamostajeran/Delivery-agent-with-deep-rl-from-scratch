@@ -73,6 +73,7 @@ class Environment:
             raise FileNotFoundError(f"Grid {grid_fp} does not exist.")
         else:
             self.grid_fp = grid_fp
+        self.grid = Grid.load_grid(self.grid_fp).cells
 
         # Initialize other variables
         self.agent_start_pos = agent_start_pos
@@ -302,9 +303,9 @@ class Environment:
 
         match grid[agent_pos]:
             case 0:  # Moved to an empty tile
-                reward = -1
+                reward = -0.1
             case 1 | 2:  # Moved to a wall or obstacle
-                reward = -5
+                reward = -1
                 pass
             case 3:  # Moved to a target tile
                 reward = 10
