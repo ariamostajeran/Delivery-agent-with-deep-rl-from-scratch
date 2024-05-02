@@ -78,6 +78,7 @@ class Environment:
         self.agent_start_pos = agent_start_pos
         self.terminal_state = False
         self.sigma = sigma
+        self.grid = Grid.load_grid(self.grid_fp).cells
               
         # Set up reward function
         if reward_fn is None:

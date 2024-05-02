@@ -8,7 +8,7 @@ from tqdm import trange
 
 try:
     from world import Environment
-    from agents.random_agent import RandomAgent
+    from agents.value_agent import ValueAgent
 except ModuleNotFoundError:
     from os import path
     from os import pardir
@@ -19,7 +19,7 @@ except ModuleNotFoundError:
     if root_path not in sys.path:
         sys.path.extend(root_path)
     from world import Environment
-    from agents.random_agent import RandomAgent
+    from agents.value_agent import ValueAgent
 
 def parse_args():
     p = ArgumentParser(description="DIC Reinforcement Learning Trainer.")
@@ -39,6 +39,11 @@ def parse_args():
                    help="Random seed value for the environment.")
     return p.parse_args()
 
+def get_P_matrix(grid, size, actions):
+    # Initialize probability matrix
+    P = [[[0 for _ in range(size)] for _ in range(size)] for _ in range(len(actions))]
+    
+    return P
 
 def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
          sigma: float, random_seed: int):
@@ -51,7 +56,10 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
                           random_seed=random_seed)
         
         # Initialize agent
-        agent = RandomAgent()
+        stateSpace = range(env.grid.shape[0] * env.grid.shape[1])
+        actionSpace = range(4)
+        P = get_P_matrix(env.grid, len(stateSpace), actionSpace)
+        agent = ValueAgent(stateSpace, actionSpace, 0.9, env.grid.shape[1], P)
         
         # Always reset the environment to initial state
         state = env.reset()
