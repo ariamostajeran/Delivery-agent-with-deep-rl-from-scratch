@@ -38,15 +38,16 @@ def parse_args():
                    help="Number of iterations to go through.")
     p.add_argument("--random_seed", type=int, default=0,
                    help="Random seed value for the environment.")
+    p.add_argument("--n_episode_steps", type=int, default=50,
+                   help="Number of steps to carry out per episode.")
     return p.parse_args()
 
 
 def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
-         sigma: float, random_seed: int):
+         sigma: float, random_seed: int, n_episode_steps: int):
     """Main loop of the program."""
 
     for grid in grid_paths:
-        n_gen_steps = 50
         # Set up the environment
         env = Environment(grid, no_gui, sigma=sigma, target_fps=fps, 
                           random_seed=random_seed)
@@ -64,7 +65,7 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
             # List to store state-action history and corresponding rewards
             state_action_reward_list = []
 
-            for step in range(n_gen_steps):
+            for step in range(n_episode_steps):
                 
                 # First action will always be random
                 if step == 0:
@@ -90,4 +91,4 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
 
 if __name__ == '__main__':
     args = parse_args()
-    main(args.GRID, args.no_gui, args.iter, args.fps, args.sigma, args.random_seed)
+    main(args.GRID, args.no_gui, args.iter, args.fps, args.sigma, args.random_seed, args.n_episode_steps)
