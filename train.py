@@ -39,10 +39,25 @@ def parse_args():
                    help="Random seed value for the environment.")
     return p.parse_args()
 
+def pointer(i, rows, cols):
+    return (i % (rows), i // (rows))
+
 def get_P_matrix(grid, size, actions):
     # Initialize probability matrix
     P = [[[0 for _ in range(size)] for _ in range(size)] for _ in range(len(actions))]
-    
+    for action in enumerate(P):
+        for p in range(size):
+            for q in range(size):
+                c_from = pointer(p, grid.shape[0], grid.shape[1])
+                c_to = pointer(q, grid.shape[0], grid.shape[1])
+                if action[0] == 0 and c_from[0] == c_to[0] and c_from[1] == c_to[1] - 1 and (grid[c_from[0]][c_from[1]] == 0 or grid[c_from[0]][c_from[1]] == 4 or grid[c_from[0]][c_from[1]] == 3) and (grid[c_to[0]][c_to[1]] == 0 or grid[c_to[0]][c_to[1]] == 4 or grid[c_to[0]][c_to[1]] == 3):
+                    P[action[0]][p][q] = 1
+                elif action[0] == 1 and c_from[0] == c_to[0] and c_from[1] == c_to[1] + 1 and (grid[c_from[0]][c_from[1]] == 0 or grid[c_from[0]][c_from[1]] == 4 or grid[c_from[0]][c_from[1]] == 3) and (grid[c_to[0]][c_to[1]] == 0 or grid[c_to[0]][c_to[1]] == 4 or grid[c_to[0]][c_to[1]] == 3):
+                    P[action[0]][p][q] = 1
+                elif action[0] == 2 and c_from[0] == c_to[0] and c_from[1] == c_to[1] + 1 and (grid[c_from[0]][c_from[1]] == 0 or grid[c_from[0]][c_from[1]] == 4 or grid[c_from[0]][c_from[1]] == 3) and (grid[c_to[0]][c_to[1]] == 0 or grid[c_to[0]][c_to[1]] == 4 or grid[c_to[0]][c_to[1]] == 3):
+                    P[action[0]][p][q] = 1
+                elif action[0] == 3 and c_from[0] == c_to[0] and c_from[1] == c_to[1] - 1 and (grid[c_from[0]][c_from[1]] == 0 or grid[c_from[0]][c_from[1]] == 4 or grid[c_from[0]][c_from[1]] == 3) and (grid[c_to[0]][c_to[1]] == 0 or grid[c_to[0]][c_to[1]] == 4 or grid[c_to[0]][c_to[1]] == 3):
+                    P[action[0]][p][q] = 1
     return P
 
 def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
@@ -59,6 +74,8 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
         stateSpace = range(env.grid.shape[0] * env.grid.shape[1])
         actionSpace = range(4)
         P = get_P_matrix(env.grid, len(stateSpace), actionSpace)
+        for p in enumerate(P[0]):
+            print(p[1])
         agent = ValueAgent(stateSpace, actionSpace, 0.9, env.grid.shape[1], P)
         
         # Always reset the environment to initial state
