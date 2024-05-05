@@ -13,30 +13,48 @@ except ModuleNotFoundError:
     from os import path
     from os import pardir
     import sys
-    root_path = path.abspath(path.join(
-        path.join(path.abspath(__file__), pardir), pardir)
+
+    root_path = path.abspath(
+        path.join(path.join(path.abspath(__file__), pardir), pardir)
     )
     if root_path not in sys.path:
         sys.path.extend(root_path)
     from world import Environment
     from agents.value_agent import ValueAgent
 
+
 def parse_args():
     p = ArgumentParser(description="DIC Reinforcement Learning Trainer.")
-    p.add_argument("GRID", type=Path, nargs="+",
-                   help="Paths to the grid file to use. There can be more than "
-                        "one.")
-    p.add_argument("--no_gui", action="store_true",
-                   help="Disables rendering to train faster")
-    p.add_argument("--sigma", type=float, default=0.1,
-                   help="Sigma value for the stochasticity of the environment.")
-    p.add_argument("--fps", type=int, default=30,
-                   help="Frames per second to render at. Only used if "
-                        "no_gui is not set.")
-    p.add_argument("--iter", type=int, default=1000,
-                   help="Number of iterations to go through.")
-    p.add_argument("--random_seed", type=int, default=0,
-                   help="Random seed value for the environment.")
+    p.add_argument(
+        "GRID",
+        type=Path,
+        nargs="+",
+        help="Paths to the grid file to use. There can be more than " "one.",
+    )
+    p.add_argument(
+        "--no_gui", action="store_true", help="Disables rendering to train faster"
+    )
+    p.add_argument(
+        "--sigma",
+        type=float,
+        default=0.1,
+        help="Sigma value for the stochasticity of the environment.",
+    )
+    p.add_argument(
+        "--fps",
+        type=int,
+        default=30,
+        help="Frames per second to render at. Only used if " "no_gui is not set.",
+    )
+    p.add_argument(
+        "--iter", type=int, default=1000, help="Number of iterations to go through."
+    )
+    p.add_argument(
+        "--random_seed",
+        type=int,
+        default=0,
+        help="Random seed value for the environment.",
+    )
     return p.parse_args()
 
 def pointer(i, rows, cols):
@@ -60,34 +78,60 @@ def get_P_matrix(grid, size, actions):
                     P[action[0]][p][q] = 1
     return P
 
-def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
-         sigma: float, random_seed: int):
+
+def calculate_next_state(state, action):
+    i, j = state
+    if action == 0:  # up
+        return i - 1, j
+    elif action == 1:  # down
+        return i + 1, j
+    elif action == 2:  # left
+        return i, j - 1
+    elif action == 3:  # right
+        return i, j + 1
+
+
+def is_within_grid(state, size):
+    i, j = state
+    return 0 <= i < size[0] and 0 <= j < size[1]
+
+
+def main(
+    grid_paths: list[Path],
+    no_gui: bool,
+    iters: int,
+    fps: int,
+    sigma: float,
+    random_seed: int,
+):
     """Main loop of the program."""
 
     for grid in grid_paths:
-        
+
         # Set up the environment
-        env = Environment(grid, no_gui,sigma=sigma, target_fps=fps, 
-                          random_seed=random_seed)
-        
+        env = Environment(
+            grid, no_gui, sigma=sigma, target_fps=fps, random_seed=random_seed
+        )
+
         # Initialize agent
         stateSpace = range(env.grid.shape[0] * env.grid.shape[1])
+        size = (env.grid.shape[0], env.grid.shape[1])
         actionSpace = range(4)
         P = get_P_matrix(env.grid, len(stateSpace), actionSpace)
         for p in enumerate(P[0]):
             print(p[1])
         agent = ValueAgent(stateSpace, actionSpace, 0.9, env.grid.shape[1], P)
-        
+
         # Always reset the environment to initial state
         state = env.reset()
         for _ in trange(iters):
-            
+
             # Agent takes an action based on the latest observation and info.
             action = agent.take_action(state)
 
             # The action is performed in the environment
             state, reward, terminated, info = env.step(action)
-            
+
             # If the final state is reached, stop.
             if terminated:
                 break
@@ -98,6 +142,6 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
         Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     args = parse_args()
     main(args.GRID, args.no_gui, args.iter, args.fps, args.sigma, args.random_seed)
