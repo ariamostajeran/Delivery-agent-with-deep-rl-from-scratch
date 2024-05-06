@@ -7,7 +7,7 @@ import numpy as np
 
 from agents import BaseAgent
 
-
+print('test')
 class RandomAgent(BaseAgent):
     """Agent that performs a random action every time. """
     def update(self, state: tuple[int, int], reward: float, action):
