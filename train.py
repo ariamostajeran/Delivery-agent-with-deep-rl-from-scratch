@@ -8,6 +8,7 @@ from tqdm import trange
 from agents.qlearning_agent import QLearningAgent
 from agents.value_agent import ValueAgent
 from value_agent_functions import *
+from agents.mc_agent import MonteCarloAgent
 try:
     from world import Environment
     from agents.random_agent import RandomAgent
@@ -76,6 +77,44 @@ def train_qlearning(env, grid, sigma, iters, random_seed):
     Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed)
 
 
+def train_mc_agent(env, grid, sigma, iters, random_seed):
+    grid_shape = env.grid.shape
+    num_states = grid_shape[0] * grid_shape[1]
+    max_step = num_states * 2
+
+    agent = MonteCarloAgent(num_states, 4, grid_width=grid_shape[1])
+
+    for _ in trange(iters):
+        # Place agent randomly on grid (exploring starts)
+        state = env.reset()
+
+        # List to store state-action history and corresponding rewards
+        state_action_reward_list = []
+
+        for step in range(max_step):
+
+            # First action will always be random
+            if step == 0:
+                action = agent.take_random_action(state)
+
+            # Remaining actions are greedy
+            else:
+                action = agent.take_action(state)
+
+            previous_state = state
+            state, reward, terminated, _, _ = env.step(action)
+            state_action_reward_list.append((previous_state, action, reward))
+
+            # If the final state is reached, stop.
+            if terminated:
+                break
+
+        agent.update(state_action_reward_list)
+
+    # Evaluate the agent
+    Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed)
+
+
 def train_value_agent(env, grid, sigma, iters, random_seed):
     grid_shape = env.grid.shape
     stateSpace = make_states(grid_shape[0], grid_shape[1])
@@ -135,9 +174,10 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
 
         elif agent_name == "value":
             train_value_agent(env, grid, sigma, iters, random_seed)
+        elif agent_name == "mc":
+            train_mc_agent(env, grid, sigma, iters, random_seed)
         else:
             raise ValueError(f"Agent name doesn't exists")
-
 
 
 if __name__ == '__main__':
