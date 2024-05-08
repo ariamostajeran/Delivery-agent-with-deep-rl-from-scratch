@@ -35,6 +35,7 @@ except ModuleNotFoundError:
     from world.gui import GUI
     from world.path_visualizer import visualize_path
 
+
 class Environment:
     def __init__(self,
                  grid_fp: Path,

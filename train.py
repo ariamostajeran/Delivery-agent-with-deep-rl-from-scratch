@@ -6,6 +6,8 @@ from argparse import ArgumentParser
 from pathlib import Path
 from tqdm import trange
 from agents.qlearning_agent import QLearningAgent
+from agents.value_agent import ValueAgent
+from value_agent_functions import *
 try:
     from world import Environment
     from agents.random_agent import RandomAgent
@@ -35,9 +37,71 @@ def parse_args():
                         "no_gui is not set.")
     p.add_argument("--iter", type=int, default=1000,
                    help="Number of iterations to go through.")
+    p.add_argument("--agent", type=str, default='qlearning',
+                   help="Agent to run with")
+
     p.add_argument("--random_seed", type=int, default=0,
                    help="Random seed value for the environment.")
     return p.parse_args()
+
+
+def train_qlearning(env, grid, sigma, iters, random_seed):
+    grid_shape = env.grid.shape
+    num_states = grid_shape[0] * grid_shape[1]
+    max_step = num_states * 2
+    # Initialize agent
+
+    agent = QLearningAgent(num_states, 4, grid_width=grid_shape[1])
+    # Always reset the environment to initial state
+    state = env.reset()
+
+    for _ in trange(iters):
+        # print(" Iteration ", iter)
+        for i in range(max_step):
+
+            # Agent takes an action based on the latest observation and info.
+            action = agent.take_action(state)
+
+            # The action is performed in the environment
+            state, reward, terminated, info, next_state = env.step(action)
+
+            agent.update(state, next_state, reward, info["actual_action"])
+
+            # If the final state is reached, stop.
+            if terminated or i == max_step - 1:
+                env.reset()
+                break
+
+    # Evaluate the agent
+    Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed)
+
+
+def train_value_agent(env, grid, sigma, iters, random_seed):
+    grid_shape = env.grid.shape
+    stateSpace = make_states(grid_shape[0], grid_shape[1])
+    actionSpace = range(4)
+    nr_states = range(grid_shape[0] * grid_shape[1])
+
+    P = get_P_matrix(env.grid, len(nr_states), actionSpace)
+    R = get_R_matrix(env.grid, len(nr_states), actionSpace)
+    agent = ValueAgent(stateSpace, actionSpace, 0.9, env.grid.shape[0], P, R)
+    # Always reset the environment to initial state
+    state = env.reset()
+
+    for _ in trange(iters):
+
+        # Update expected value matrix and policy
+        agent.update(stateSpace)
+        # Get best action to take based on updated policy
+        action = agent.take_action(state)
+        # Perform the step in the environment
+        state, _, terminated, _, _ = env.step(action)
+        # Perform another run when target is reached
+        if terminated:
+            env.reset()
+
+        # Evaluate the agent
+    Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed)
 
 
 def reward_fn(grid, agent_pos) -> float:
@@ -55,62 +119,27 @@ def reward_fn(grid, agent_pos) -> float:
             raise ValueError(f"Grid cell should not have value: {grid[agent_pos]}.",
                              f"at position {agent_pos}")
     return reward
-def print_q_values(q_values):
-    print("Q-Values:")
-    print("───────────────────────")
-    print("State   |   Action Values")
-    print("───────────────────────")
-    for state_index, q_values_state in enumerate(q_values):
-        print(f"  {state_index}    |   ", end="")
-        for action_index, q_value in enumerate(q_values_state):
-            print(f"{q_value:.2f}   ", end="")
-        print()
-    print("───────────────────────")
+
 
 def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
-         sigma: float, random_seed: int):
+         sigma: float, random_seed: int, agent_name: str):
     """Main loop of the program."""
 
     for grid in grid_paths:
         # Set up the environment
-        env = Environment(grid, no_gui,sigma=sigma, target_fps=fps,
+        env = Environment(grid, no_gui, sigma=sigma, target_fps=fps,
                           random_seed=random_seed, reward_fn=reward_fn)
-        grid_shape = env.grid.shape
-        num_states = grid_shape[0] * grid_shape[1]
-        max_step = 100
-        # Initialize agent
-        agent = QLearningAgent(num_states, 4, grid_width=grid_shape[1])
 
-        # Always reset the environment to initial state
-        state = env.reset()
+        if agent_name == "qlearning":
+            train_qlearning(env, grid, sigma, iters, random_seed)
 
-        for iter in trange(iters):
-            print(" Iteration ", iter)
-            for i in range(max_step):
+        elif agent_name == "value":
+            train_value_agent(env, grid, sigma, iters, random_seed)
+        else:
+            raise ValueError(f"Agent name doesn't exists")
 
-                # Agent takes an action based on the latest observation and info.
-                action = agent.take_action(state)
-
-                # The action is performed in the environment
-                state, reward, terminated, info, next_state = env.step(action)
-                # if reward>0:
-                #     print("goal_reached")
-                agent.update(state, next_state, reward, info["actual_action"])
-
-                # If the final state is reached, stop.
-                if terminated or i == max_step - 1:
-                    # print("STEP NUM", i)
-                    # print("reward", reward)
-                    env.reset()
-                    # print_q_values(agent.q_values)
-                    break
-
-
-
-        # Evaluate the agent
-        Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed)
 
 
 if __name__ == '__main__':
     args = parse_args()
-    main(args.GRID, args.no_gui, args.iter, args.fps, args.sigma, args.random_seed)
+    main(args.GRID, args.no_gui, args.iter, args.fps, args.sigma, args.random_seed, args.agent)
