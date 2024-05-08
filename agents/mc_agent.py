@@ -10,13 +10,14 @@ from agents import BaseAgent
 
 class MonteCarloAgent(BaseAgent):
 
-    def __init__(self, num_states, num_actions, grid_width, gamma=0.99):
+    def __init__(self, num_states, num_actions, grid_width, epsilon=0.5, gamma=0.90):
         self.num_states = num_states
         self.num_actions = num_actions
         self.gamma = gamma
         self.q_values = np.zeros((num_states, num_actions))
         self.n_visits = np.zeros((num_states, num_actions))
         self.grid_width = grid_width
+        self.epsilon = epsilon
 
     def update(self, state_action_reward_list):
         """Updates the agent's q-values after each round of exploration"""
@@ -38,14 +39,20 @@ class MonteCarloAgent(BaseAgent):
                 # Updating q-values 
                 self.q_values[state_index, action] += G_value / self.n_visits[state_index, action]
                 idx += 1
+                self.epsilon_decay(decay_rate=0.99)
 
     def encode_state(self, state):
         return state[0] * self.grid_width + state[1]
 
-    def take_action(self, state: tuple[int, int]) -> int:
+    def epsilon_decay(self, decay_rate):
+        self.epsilon = self.epsilon * decay_rate
 
-        state_index = self.encode_state(state)
-        return np.argmax(self.q_values[state_index])
+    def take_action(self, state: tuple[int, int]) -> int:
+        if np.random.rand() < self.epsilon:
+            return randint(0,3)
+        else:
+            state_index = self.encode_state(state)
+            return np.argmax(self.q_values[state_index])
     
-    def take_random_action(self, state: tuple[int, int]) -> int:
+    def take_random_action(self) -> int:
         return randint(0, 3)

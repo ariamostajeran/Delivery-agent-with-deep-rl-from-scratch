@@ -54,6 +54,7 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
     
         grid_shape = env.grid.shape
         num_states = grid_shape[0] * grid_shape[1]
+        print(num_states)
 
         # Initialize agent
         agent = MonteCarloAgent(num_states, 4, grid_width = grid_shape[1])
@@ -69,7 +70,7 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
                 
                 # First action will always be random
                 if step == 0:
-                    action = agent.take_random_action(state)
+                    action = agent.take_random_action()
 
                 # Remaining actions are greedy
                 else: 
