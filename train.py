@@ -1,7 +1,7 @@
 """
 Train your RL Agent in this file. 
 """
-
+import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 from pathlib import Path
 from tqdm import trange
@@ -56,7 +56,10 @@ def train_qlearning(env, grid, sigma, iters, random_seed):
     # Always reset the environment to initial state
     state = env.reset()
 
-    for _ in trange(iters):
+    cum_rewards = []
+    monitor_time = iters / 20
+    cum_reward = 0
+    for iteration in trange(iters):
         # print(" Iteration ", iter)
         for i in range(max_step):
 
@@ -67,14 +70,18 @@ def train_qlearning(env, grid, sigma, iters, random_seed):
             state, reward, terminated, info, next_state = env.step(action)
 
             agent.update(state, next_state, reward, info["actual_action"])
-
+            cum_reward += reward
             # If the final state is reached, stop.
             if terminated or i == max_step - 1:
                 env.reset()
                 break
+        if iteration % monitor_time == 0:
+            cum_rewards.append(cum_reward / monitor_time) # mean of cum rewards of the past episodes
+            cum_reward = 0
 
     # Evaluate the agent
     Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed)
+    return cum_rewards
 
 
 def train_mc_agent(env, grid, sigma, iters, random_seed):
@@ -84,7 +91,10 @@ def train_mc_agent(env, grid, sigma, iters, random_seed):
 
     agent = MonteCarloAgent(num_states, 4, grid_width=grid_shape[1])
 
-    for _ in trange(iters):
+    cum_rewards = []
+    monitor_time = iters / 20
+    cum_reward = 0
+    for iteration in trange(iters):
         # Place agent randomly on grid (exploring starts)
         state = env.reset()
 
@@ -104,15 +114,20 @@ def train_mc_agent(env, grid, sigma, iters, random_seed):
             previous_state = state
             state, reward, terminated, _, _ = env.step(action)
             state_action_reward_list.append((previous_state, action, reward))
+            cum_reward += reward
 
             # If the final state is reached, stop.
             if terminated:
                 break
+        if iteration % monitor_time == 0:
+            cum_rewards.append(cum_reward / monitor_time)  # mean of cum rewards of the past episodes
+            cum_reward = 0
 
         agent.update(state_action_reward_list)
 
     # Evaluate the agent
     Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed)
+    return cum_rewards
 
 
 def train_value_agent(env, grid, sigma, iters, random_seed):
@@ -120,6 +135,8 @@ def train_value_agent(env, grid, sigma, iters, random_seed):
     stateSpace = make_states(grid_shape[0], grid_shape[1])
     actionSpace = range(4)
     nr_states = range(grid_shape[0] * grid_shape[1])
+    num_states = grid_shape[0] * grid_shape[1]
+    max_step = num_states * 2
 
     P = get_P_matrix(env.grid, len(nr_states), actionSpace)
     R = get_R_matrix(env.grid, len(nr_states), actionSpace)
@@ -127,21 +144,43 @@ def train_value_agent(env, grid, sigma, iters, random_seed):
     # Always reset the environment to initial state
     state = env.reset()
 
-    for _ in trange(iters):
+    cum_rewards = []
+    monitor_time = iters / 20
+    cum_reward = 0
 
-        # Update expected value matrix and policy
-        agent.update(stateSpace)
-        # Get best action to take based on updated policy
-        action = agent.take_action(state)
-        # Perform the step in the environment
-        state, _, terminated, _, _ = env.step(action)
-        # Perform another run when target is reached
-        if terminated:
-            env.reset()
+    for iteration in trange(iters):
 
+        for step in range(max_step):
+
+            # Update expected value matrix and policy
+            agent.update(stateSpace)
+            # Get best action to take based on updated policy
+            action = agent.take_action(state)
+            # Perform the step in the environment
+            state, reward, terminated, _, _ = env.step(action)
+            cum_reward += reward
+            # Perform another run when target is reached
+            if terminated:
+                env.reset()
+                break
+
+        if iteration % monitor_time == 0:
+            cum_rewards.append(cum_reward / monitor_time)  # mean of cum rewards of the past episodes
+            cum_reward = 0
         # Evaluate the agent
     Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed)
+    return cum_rewards
 
+
+def plot_cum_rewards(cum_rewards):
+    plt.figure(figsize=(10, 5))
+    plt.plot(cum_rewards, label='Cumulative Rewards')
+    plt.xlabel('Iterations')
+    plt.ylabel('Cumulative Reward')
+    plt.title('Average Cumulative Rewards Over Training Iterations')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
 
 def reward_fn(grid, agent_pos) -> float:
 
@@ -169,15 +208,17 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
         env = Environment(grid, no_gui, sigma=sigma, target_fps=fps,
                           random_seed=random_seed, reward_fn=reward_fn)
 
+        cum_rewards = []
         if agent_name == "qlearning":
-            train_qlearning(env, grid, sigma, iters, random_seed)
+            cum_rewards = train_qlearning(env, grid, sigma, iters, random_seed)
 
         elif agent_name == "value":
-            train_value_agent(env, grid, sigma, iters, random_seed)
+            cum_rewards = train_value_agent(env, grid, sigma, iters, random_seed)
         elif agent_name == "mc":
-            train_mc_agent(env, grid, sigma, iters, random_seed)
+            cum_rewards = train_mc_agent(env, grid, sigma, iters, random_seed)
         else:
             raise ValueError(f"Agent name doesn't exists")
+        plot_cum_rewards(cum_rewards)
 
 
 if __name__ == '__main__':
