@@ -46,13 +46,17 @@ def parse_args():
     return p.parse_args()
 
 
-def train_qlearning(env, grid, sigma, iters, random_seed):
+def train_qlearning(env, grid, iters, alpha, gamma, epsilon, random_seed):
     grid_shape = env.grid.shape
     num_states = grid_shape[0] * grid_shape[1]
     max_step = num_states * 2
     # Initialize agent
-
-    agent = QLearningAgent(num_states, 4, grid_width=grid_shape[1])
+    agent = QLearningAgent(num_states=num_states,
+                           num_actions=4, 
+                           grid_width=grid_shape[1],
+                           alpha=alpha,
+                           gamma=gamma,
+                           epsilon=epsilon)
     # Always reset the environment to initial state
     state = env.reset()
 
@@ -80,16 +84,19 @@ def train_qlearning(env, grid, sigma, iters, random_seed):
             cum_reward = 0
 
     # Evaluate the agent
-    Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed)
+    Environment.evaluate_agent(grid_fp=grid, agent=agent, max_steps=iters, sigma=env.sigma, random_seed=random_seed)
     return cum_rewards
 
 
-def train_mc_agent(env, grid, sigma, iters, random_seed):
+def train_mc_agent(env, grid, iters, gamma, random_seed):
     grid_shape = env.grid.shape
     num_states = grid_shape[0] * grid_shape[1]
     max_step = num_states * 2
 
-    agent = MonteCarloAgent(num_states, 4, grid_width=grid_shape[1])
+    agent = MonteCarloAgent(num_states=num_states, 
+                            num_actions=4, 
+                            grid_width=grid_shape[1],
+                            gamma=gamma)
 
     cum_rewards = []
     monitor_time = iters / 20
@@ -126,11 +133,11 @@ def train_mc_agent(env, grid, sigma, iters, random_seed):
         agent.update(state_action_reward_list)
 
     # Evaluate the agent
-    Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed)
+    Environment.evaluate_agent(grid_fp=grid, agent=agent, max_steps=iters, sigma=env.sigma, random_seed=random_seed)
     return cum_rewards
 
 
-def train_value_agent(env, grid, sigma, iters, random_seed):
+def train_value_agent(env, grid, iters, gamma, random_seed):
     grid_shape = env.grid.shape
     stateSpace = make_states(grid_shape[0], grid_shape[1])
     actionSpace = range(4)
@@ -140,7 +147,12 @@ def train_value_agent(env, grid, sigma, iters, random_seed):
 
     P = get_P_matrix(env.grid, len(nr_states), actionSpace)
     R = get_R_matrix(env.grid, len(nr_states), actionSpace)
-    agent = ValueAgent(stateSpace, actionSpace, 0.9, env.grid.shape[0], P, R)
+    agent = ValueAgent(stateSpace=stateSpace, 
+                       actionSpace=actionSpace, 
+                       gamma=gamma, 
+                       cols=env.grid.shape[0], 
+                       P=P, 
+                       R=R)
     # Always reset the environment to initial state
     state = env.reset()
 
@@ -168,7 +180,7 @@ def train_value_agent(env, grid, sigma, iters, random_seed):
             cum_rewards.append(cum_reward / monitor_time)  # mean of cum rewards of the past episodes
             cum_reward = 0
         # Evaluate the agent
-    Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed)
+    Environment.evaluate_agent(grid_fp=grid, agent=agent, max_steps=iters, sigma=env.sigma, random_seed=random_seed)
     return cum_rewards
 
 
@@ -189,7 +201,6 @@ def reward_fn(grid, agent_pos) -> float:
             reward = -0.1
         case 1 | 2:  # Moved to a wall or obstacle
             reward = -1
-
         case 3:  # Moved to a target tile
             reward = 10
             # "Illegal move"
@@ -203,6 +214,11 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
          sigma: float, random_seed: int, agent_name: str):
     """Main loop of the program."""
 
+    #Hyperparameters
+    alpha = 0.1
+    gamma = 0.99
+    epsilon = 0.1
+
     for grid in grid_paths:
         # Set up the environment
         env = Environment(grid, no_gui, sigma=sigma, target_fps=fps,
@@ -210,12 +226,11 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
 
         cum_rewards = []
         if agent_name == "qlearning":
-            cum_rewards = train_qlearning(env, grid, sigma, iters, random_seed)
-
+            cum_rewards = train_qlearning(env, grid, iters, alpha, gamma, epsilon, random_seed)
         elif agent_name == "value":
-            cum_rewards = train_value_agent(env, grid, sigma, iters, random_seed)
+            cum_rewards = train_value_agent(env, grid, iters, gamma, random_seed)
         elif agent_name == "mc":
-            cum_rewards = train_mc_agent(env, grid, sigma, iters, random_seed)
+            cum_rewards = train_mc_agent(env, grid, iters, gamma, random_seed)
         else:
             raise ValueError(f"Agent name doesn't exists")
         plot_cum_rewards(cum_rewards)
