@@ -32,7 +32,11 @@ class ValueAgent(BaseAgent):
         for state in stateSpace:
             best_value = -math.inf
             for action in self.actionSpace:
-                expected_value = self.R[action][self.pointer(state)] + self.gamma*sum(self.P[action][self.pointer(state)][self.pointer(next_state)] * self.V[self.pointer(next_state)] for next_state in self.stateSpace)
+                expected_value = (self.R[action][self.pointer(state)] 
+                                    + self.gamma*sum(
+                                        self.P[action][self.pointer(state)][self.pointer(next_state)] 
+                                        * self.V[self.pointer(next_state)] 
+                                            for next_state in self.stateSpace))
                 if expected_value > best_value:
                     best_value = copy.copy(expected_value)
             self.V[self.pointer(state)] = best_value
@@ -41,7 +45,11 @@ class ValueAgent(BaseAgent):
         for state in stateSpace:
             best_value, best_action = -math.inf, None
             for action in self.actionSpace:
-                expected_value = self.R[action][self.pointer(state)] + self.gamma*sum(self.P[action][self.pointer(state)][self.pointer(next_state)] * self.V[self.pointer(next_state)] for next_state in self.stateSpace)
+                expected_value = (self.R[action][self.pointer(state)] 
+                                    + self.gamma*sum(
+                                        self.P[action][self.pointer(state)][self.pointer(next_state)] 
+                                        * self.V[self.pointer(next_state)] 
+                                            for next_state in self.stateSpace))
                 if expected_value > best_value:
                     best_value = copy.copy(expected_value)
                     best_action = copy.copy(action)
