@@ -138,47 +138,13 @@ def train_mc_agent(env, grid, iters, gamma, random_seed):
 
 
 def train_value_agent(env, grid, iters, gamma, random_seed):
-    grid_shape = env.grid.shape
-    stateSpace = make_states(grid_shape[0], grid_shape[1])
-    actionSpace = range(4)
-    nr_states = range(grid_shape[0] * grid_shape[1])
-    num_states = grid_shape[0] * grid_shape[1]
-    max_step = num_states * 2
+    agent = ValueAgent(env, 
+                       state_space=make_states(env.grid.shape[0], env.grid.shape[1]), 
+                       action_space=range(4),
+                       gamma=gamma,
+                       random_seed=random_seed)
 
-    P = get_P_matrix(env.grid, len(nr_states), actionSpace)
-    R = get_R_matrix(env.grid, len(nr_states), actionSpace)
-    agent = ValueAgent(stateSpace=stateSpace, 
-                       actionSpace=actionSpace, 
-                       gamma=gamma, 
-                       cols=env.grid.shape[0], 
-                       P=P, 
-                       R=R)
-    # Always reset the environment to initial state
-    state = env.reset()
-
-    cum_rewards = []
-    monitor_time = iters / 20
-    cum_reward = 0
-
-    for iteration in trange(iters):
-
-        for step in range(max_step):
-
-            # Update expected value matrix and policy
-            agent.update(stateSpace)
-            # Get best action to take based on updated policy
-            action = agent.take_action(state)
-            # Perform the step in the environment
-            state, reward, terminated, _, _ = env.step(action)
-            cum_reward += reward
-            # Perform another run when target is reached
-            if terminated:
-                env.reset()
-                break
-
-        if iteration % monitor_time == 0:
-            cum_rewards.append(cum_reward / monitor_time)  # mean of cum rewards of the past episodes
-            cum_reward = 0
+    cum_rewards = agent.train(iters)
         # Evaluate the agent
     Environment.evaluate_agent(grid_fp=grid, agent=agent, max_steps=iters, sigma=env.sigma, random_seed=random_seed)
     return cum_rewards
