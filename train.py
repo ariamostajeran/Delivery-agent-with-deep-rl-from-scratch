@@ -89,48 +89,12 @@ def train_qlearning(env, grid, iters, alpha, gamma, epsilon, random_seed):
 
 
 def train_mc_agent(env, grid, iters, gamma, random_seed):
-    grid_shape = env.grid.shape
-    num_states = grid_shape[0] * grid_shape[1]
-    max_step = num_states * 2
+    agent = MonteCarloAgent(env,
+                            num_actions=4,
+                            gamma=gamma,
+                            random_seed=random_seed)
 
-    agent = MonteCarloAgent(num_states=num_states, 
-                            num_actions=4, 
-                            grid_width=grid_shape[1],
-                            gamma=gamma)
-
-    cum_rewards = []
-    monitor_time = iters / 20
-    cum_reward = 0
-    for iteration in trange(iters):
-        # Place agent randomly on grid (exploring starts)
-        state = env.reset()
-
-        # List to store state-action history and corresponding rewards
-        state_action_reward_list = []
-
-        for step in range(max_step):
-
-            # First action will always be random
-            if step == 0:
-                action = agent.take_random_action(state)
-
-            # Remaining actions are greedy
-            else:
-                action = agent.take_action(state)
-
-            previous_state = state
-            state, reward, terminated, _, _ = env.step(action)
-            state_action_reward_list.append((previous_state, action, reward))
-            cum_reward += reward
-
-            # If the final state is reached, stop.
-            if terminated:
-                break
-        if iteration % monitor_time == 0:
-            cum_rewards.append(cum_reward / monitor_time)  # mean of cum rewards of the past episodes
-            cum_reward = 0
-
-        agent.update(state_action_reward_list)
+    cum_rewards = agent.train(iters)
 
     # Evaluate the agent
     Environment.evaluate_agent(grid_fp=grid, agent=agent, max_steps=iters, sigma=env.sigma, random_seed=random_seed)
