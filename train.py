@@ -47,41 +47,14 @@ def parse_args():
 
 
 def train_qlearning(env, grid, iters, alpha, gamma, epsilon, random_seed):
-    grid_shape = env.grid.shape
-    num_states = grid_shape[0] * grid_shape[1]
-    max_step = num_states * 2
-    # Initialize agent
-    agent = QLearningAgent(num_states=num_states,
-                           num_actions=4, 
-                           grid_width=grid_shape[1],
-                           alpha=alpha,
-                           gamma=gamma,
-                           epsilon=epsilon)
-    # Always reset the environment to initial state
-    state = env.reset()
+    agent = QLearningAgent(env, 
+                            num_actions=len(range(4)),
+                            alpha=alpha,
+                            gamma=gamma,
+                            epsilon=epsilon,
+                            random_seed=random_seed)
 
-    cum_rewards = []
-    monitor_time = iters / 20
-    cum_reward = 0
-    for iteration in trange(iters):
-        # print(" Iteration ", iter)
-        for i in range(max_step):
-
-            # Agent takes an action based on the latest observation and info.
-            action = agent.take_action(state)
-
-            # The action is performed in the environment
-            state, reward, terminated, info, next_state = env.step(action)
-
-            agent.update(state, next_state, reward, info["actual_action"])
-            cum_reward += reward
-            # If the final state is reached, stop.
-            if terminated or i == max_step - 1:
-                env.reset()
-                break
-        if iteration % monitor_time == 0:
-            cum_rewards.append(cum_reward / monitor_time) # mean of cum rewards of the past episodes
-            cum_reward = 0
+    cum_rewards = agent.train(iters)
 
     # Evaluate the agent
     Environment.evaluate_agent(grid_fp=grid, agent=agent, max_steps=iters, sigma=env.sigma, random_seed=random_seed)
