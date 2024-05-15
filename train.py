@@ -9,6 +9,7 @@ from agents.qlearning_agent import QLearningAgent
 from agents.value_agent import ValueAgent
 from value_agent_functions import *
 from agents.mc_agent import MonteCarloAgent
+from experiments import *
 try:
     from world import Environment
     from agents.random_agent import RandomAgent
@@ -45,16 +46,6 @@ def parse_args():
                    help="Random seed value for the environment.")
     return p.parse_args()
 
-
-def plot_cum_rewards(cum_rewards):
-    plt.figure(figsize=(10, 5))
-    plt.plot(cum_rewards, label='Cumulative Rewards')
-    plt.xlabel('Iterations')
-    plt.ylabel('Cumulative Reward')
-    plt.title('Average Cumulative Rewards Over Training Iterations')
-    plt.legend()
-    plt.grid(True)
-    plt.show()
 
 def reward_fn(grid, agent_pos) -> float:
 
@@ -108,10 +99,21 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
         else:
             raise ValueError(f"Agent name doesn't exists")
 
-        #Training        
-        cum_rewards = agent.train(iters)
 
-        plot_cum_rewards(cum_rewards)
+        #Training        
+        results = agent.train(iters)
+
+        print(len(results))
+
+
+
+        #Experiment 1: Cumulative Reward Plot
+        plot_experiment(results[0], 'Iterations', 'Cumulative Reward', 'Average Cumulative Rewards Over Training Iterations')
+
+        if len(results) > 1:
+            #Experiment 2: Exploration/Exploitation trade-off
+            plot_experiment(results[1], 'Iterations', 'Trade-off', 'Exploration/Exploitation trade-off')
+        
 
         Environment.evaluate_agent(grid_fp=grid, agent=agent, max_steps=iters, sigma=env.sigma, random_seed=random_seed)
 

@@ -94,4 +94,4 @@ class ValueAgent(BaseAgent):
                 cum_rewards.append(cum_reward / monitor_time)  # mean of cum rewards of the past episodes
                 cum_reward = 0
 
-        return cum_rewards
+        return (cum_rewards,)
