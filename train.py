@@ -46,47 +46,6 @@ def parse_args():
     return p.parse_args()
 
 
-def train_qlearning(env, grid, iters, alpha, gamma, epsilon, random_seed):
-    agent = QLearningAgent(env, 
-                            num_actions=len(range(4)),
-                            alpha=alpha,
-                            gamma=gamma,
-                            epsilon=epsilon,
-                            random_seed=random_seed)
-
-    cum_rewards = agent.train(iters)
-
-    # Evaluate the agent
-    Environment.evaluate_agent(grid_fp=grid, agent=agent, max_steps=iters, sigma=env.sigma, random_seed=random_seed)
-    return cum_rewards
-
-
-def train_mc_agent(env, grid, iters, gamma, random_seed):
-    agent = MonteCarloAgent(env,
-                            num_actions=4,
-                            gamma=gamma,
-                            random_seed=random_seed)
-
-    cum_rewards = agent.train(iters)
-
-    # Evaluate the agent
-    Environment.evaluate_agent(grid_fp=grid, agent=agent, max_steps=iters, sigma=env.sigma, random_seed=random_seed)
-    return cum_rewards
-
-
-def train_value_agent(env, grid, iters, gamma, random_seed):
-    agent = ValueAgent(env, 
-                       state_space=make_states(env.grid.shape[0], env.grid.shape[1]), 
-                       action_space=range(4),
-                       gamma=gamma,
-                       random_seed=random_seed)
-
-    cum_rewards = agent.train(iters)
-        # Evaluate the agent
-    Environment.evaluate_agent(grid_fp=grid, agent=agent, max_steps=iters, sigma=env.sigma, random_seed=random_seed)
-    return cum_rewards
-
-
 def plot_cum_rewards(cum_rewards):
     plt.figure(figsize=(10, 5))
     plt.plot(cum_rewards, label='Cumulative Rewards')
@@ -129,14 +88,32 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
 
         cum_rewards = []
         if agent_name == "qlearning":
-            cum_rewards = train_qlearning(env, grid, iters, alpha, gamma, epsilon, random_seed)
+            agent = QLearningAgent(env, 
+                            num_actions=len(range(4)),
+                            alpha=alpha,
+                            gamma=gamma,
+                            epsilon=epsilon,
+                            random_seed=random_seed)        
         elif agent_name == "value":
-            cum_rewards = train_value_agent(env, grid, iters, gamma, random_seed)
+            agent = ValueAgent(env, 
+                       state_space=make_states(env.grid.shape[0], env.grid.shape[1]), 
+                       action_space=range(4),
+                       gamma=gamma,
+                       random_seed=random_seed)        
         elif agent_name == "mc":
-            cum_rewards = train_mc_agent(env, grid, iters, gamma, random_seed)
+            agent = MonteCarloAgent(env,
+                            num_actions=4,
+                            gamma=gamma,
+                            random_seed=random_seed)
         else:
             raise ValueError(f"Agent name doesn't exists")
+
+        #Training        
+        cum_rewards = agent.train(iters)
+
         plot_cum_rewards(cum_rewards)
+
+        Environment.evaluate_agent(grid_fp=grid, agent=agent, max_steps=iters, sigma=env.sigma, random_seed=random_seed)
 
 
 if __name__ == '__main__':
