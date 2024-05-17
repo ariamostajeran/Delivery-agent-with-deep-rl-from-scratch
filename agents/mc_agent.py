@@ -48,13 +48,14 @@ class MonteCarloAgent(BaseAgent):
         return state[0] * self.grid_width + state[1]
 
     def take_action(self, state: tuple[int, int]) -> int:
+
         state_index = self.encode_state(state)
         self.exploitation_steps += 1
         return np.argmax(self.q_values[state_index])
 
     def take_random_action(self, state: tuple[int, int]) -> int:
         self.exploration_steps += 1
-        return randint(0, self.num_actions)
+        return randint(0, self.num_actions - 1)
     
     def train(self, iters):
         max_step = self.num_states * 2
@@ -62,6 +63,7 @@ class MonteCarloAgent(BaseAgent):
         #Experiments
         cum_rewards = []
         expl_tradeoffs = []
+
 
         monitor_time = iters / 20
         cum_reward = 0
@@ -93,10 +95,9 @@ class MonteCarloAgent(BaseAgent):
             if iteration % monitor_time == 0:
                 cum_rewards.append(cum_reward / monitor_time)  # mean of cum rewards of the past episodes
                 cum_reward = 0
-
+            
                 expl_tradeoffs.append(self.exploration_steps/self.exploitation_steps)
-
 
             self.update(state_action_reward_list)
 
-            return (cum_rewards,)
+        return (cum_rewards, expl_tradeoffs)

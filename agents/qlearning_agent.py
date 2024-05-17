@@ -38,10 +38,10 @@ class QLearningAgent(BaseAgent):
 
     def train(self, iters):
         max_step = self.num_states * 2
-     # Always reset the environment to initial state
+        # Always reset the environment to initial state
         state = self.env.reset()
 
-        #Experiments
+        # Experiments
         cum_rewards = []
         expl_tradeoffs = []
 
@@ -68,6 +68,5 @@ class QLearningAgent(BaseAgent):
                 cum_reward = 0
 
                 expl_tradeoffs.append(self.exploration_steps/self.exploitation_steps)
-
 
         return (cum_rewards, expl_tradeoffs)
