@@ -5,6 +5,7 @@ Train your RL Agent in this file.
 from argparse import ArgumentParser
 from pathlib import Path
 from tqdm import trange
+import copy
 
 try:
     from world import Environment
@@ -125,7 +126,7 @@ def get_R_matrix(grid, size, actions):
             c_to = move(pointer(p, grid.shape[0]), action)
             # Start from an illegal cell (boundary or obstacle)
             if grid[c_from[0]][c_from[1]] == 1 or grid[c_from[0]][c_from[1]] == 2:
-                R[action][p] = -1000
+                R[action][p] = -100
             # Start from a legal cell (empty) and move into an illegal cell (boundary or obstacle)
             elif grid[c_to[0]][c_to[1]] == 1 or grid[c_to[0]][c_to[1]] == 2:
                 R[action][p] = -2
@@ -180,6 +181,7 @@ def main(
             action = agent.take_action(state)
             # Perform the step in the environment
             state, _, terminated, _ = env.step(action)
+
             # Perform another run when target is reached
             if terminated:
                 env.reset()

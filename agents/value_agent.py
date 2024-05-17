@@ -9,6 +9,7 @@ import numpy as np
 # Added
 import math
 import copy
+import time
 
 from agents import BaseAgent
 
@@ -28,6 +29,17 @@ class ValueAgent(BaseAgent):
         return state[0] + state[1] * self.cols
 
     def update(self, stateSpace):
+        print("new")
+        for x in range(7):
+            for val in self.V[x*8:x*8+8]:
+                if val < 0:
+                    print(f'{val:.6f}', end = ' ')
+                else:
+                    print(f'{val:.6f}', end = '  ')
+            print("")
+        V_new = copy.copy(self.V)
+        pi_new = copy.copy(self.pi)
+
         # Policy evaluation
         for state in stateSpace:
             best_value = -math.inf
@@ -35,7 +47,8 @@ class ValueAgent(BaseAgent):
                 expected_value = self.R[action][self.pointer(state)] + self.gamma*sum(self.P[action][self.pointer(state)][self.pointer(next_state)] * self.V[self.pointer(next_state)] for next_state in self.stateSpace)
                 if expected_value > best_value:
                     best_value = copy.copy(expected_value)
-            self.V[self.pointer(state)] = best_value
+            V_new[self.pointer(state)] = best_value
+        self.V = V_new
 
         # Policy control
         for state in stateSpace:
@@ -45,7 +58,8 @@ class ValueAgent(BaseAgent):
                 if expected_value > best_value:
                     best_value = copy.copy(expected_value)
                     best_action = copy.copy(action)
-            self.pi[self.pointer(state)] = best_action
+            pi_new[self.pointer(state)] = best_action
+        self.pi = pi_new
 
     def take_action(self, state: tuple[int, int]) -> int:
         # Look up the best action to take for the given state in the policy
