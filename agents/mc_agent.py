@@ -33,16 +33,14 @@ class MonteCarloAgent(BaseAgent):
             # G = (gamma*G) + R_(t+1)
             G_value = self.gamma*G_value + reward
 
-            # Only check the first occurence of the state-action pair in the episodes
-            if (state, action) not in [(state, action) for state, action, _ in state_action_reward_list[:-idx]]:
-                state_index = self.encode_state(state)
+            state_index = self.encode_state(state)
 
-                # Increment the amount of observations for this state-action pair
-                self.n_visits[state_index, action] += 1
+            # Increment the amount of observations for this state-action pair
+            self.n_visits[state_index, action] += 1
 
-                # Updating q-values
-                self.q_values[state_index, action] += G_value / self.n_visits[state_index, action]
-                idx += 1
+            # Updating q-values
+            self.q_values[state_index, action] += G_value / self.n_visits[state_index, action]
+            idx += 1
 
     def encode_state(self, state):
         return state[0] * self.grid_width + state[1]
@@ -84,9 +82,9 @@ class MonteCarloAgent(BaseAgent):
                 else:
                     action = self.take_action(state)
 
-                previous_state = state
-                state, reward, terminated, _, _ = self.env.step(action)
-                state_action_reward_list.append((previous_state, action, reward))
+                next_state, reward, terminated, _, _ = self.env.step(action)
+                state_action_reward_list.append((state, action, reward))
+                state = next_state
                 cum_reward += reward
 
                 # If the final state is reached, stop.
