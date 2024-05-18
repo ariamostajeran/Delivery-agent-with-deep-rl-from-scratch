@@ -8,12 +8,16 @@ import numpy as np
 
 
 class BaseAgent(ABC):
-    def __init__(self):
+    def __init__(self, env):
         """Base agent. All other agents should build on this class.
 
         As a reminder, you are free to add more methods/functions to this class
         if your agent requires it.
         """
+        self.env = env
+        self.num_states = env.grid.shape[0] * env.grid.shape[1]
+        self.grid = env.grid
+
 
     @abstractmethod
     def take_action(self, state: tuple[int, int]) -> int:

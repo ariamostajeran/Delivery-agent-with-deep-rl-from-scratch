@@ -3,6 +3,8 @@ Environment.
 """
 import random
 import datetime
+from typing import Tuple, Any
+
 import numpy as np
 from tqdm import trange
 from pathlib import Path
@@ -33,6 +35,7 @@ except ModuleNotFoundError:
     from world.gui import GUI
     from world.path_visualizer import visualize_path
 
+
 class Environment:
     def __init__(self,
                  grid_fp: Path,
@@ -42,7 +45,7 @@ class Environment:
                  reward_fn: callable = None,
                  target_fps: int = 30,
                  random_seed: int | float | str | bytes | bytearray | None = 0):
-        
+
         """Creates the Grid Environment for the Reinforcement Learning robot
         from the provided file.
 
@@ -58,7 +61,7 @@ class Environment:
                 calculated as 1-sigma.
             agent_start_pos: Tuple where each agent should start.
                 If None is provided, then a random start position is used.
-            reward_fn: Custom reward function to use. 
+            reward_fn: Custom reward function to use.
             target_fps: How fast the simulation should run if it is being shown
                 in a GUI. If in no_gui mode, then the simulation will run as fast as
                 possible. We may set a low FPS so we can actually see what's
@@ -73,12 +76,13 @@ class Environment:
             raise FileNotFoundError(f"Grid {grid_fp} does not exist.")
         else:
             self.grid_fp = grid_fp
+        self.grid = Grid.load_grid(self.grid_fp).cells
 
         # Initialize other variables
         self.agent_start_pos = agent_start_pos
         self.terminal_state = False
         self.sigma = sigma
-              
+
         # Set up reward function
         if reward_fn is None:
             warn("No reward function provided. Using default reward.")
@@ -104,12 +108,12 @@ class Environment:
         return {"target_reached": False,
                 "agent_moved": False,
                 "actual_action": None}
-    
+
     @staticmethod
     def _reset_world_stats() -> dict:
         """Resets the world stats dictionary.
 
-        world_stats is a dict with information about the 
+        world_stats is a dict with information about the
         environment since last env.reset(). Basically, it
         accumulates information.
         """
@@ -147,7 +151,7 @@ class Environment:
     def reset(self, **kwargs) -> tuple[int, int]:
         """Reset the environment to an initial state.
 
-        You can fit it keyword arguments which will overwrite the 
+        You can fit it keyword arguments which will overwrite the
         initial arguments provided when initializing the environment.
 
         Args:
@@ -170,7 +174,7 @@ class Environment:
                 case _:
                     raise ValueError(f"{k} is not one of the possible "
                                      f"keyword arguments.")
-        
+
         # Reset variables
         self.grid = Grid.load_grid(self.grid_fp).cells
         self._initialize_agent_pos()
@@ -189,7 +193,7 @@ class Environment:
         return self.agent_pos
 
     def _move_agent(self, new_pos: tuple[int, int]):
-        """Moves the agent, if possible and updates the 
+        """Moves the agent, if possible and updates the
         corresponding stats.
 
         Args:
@@ -219,9 +223,9 @@ class Environment:
                 raise ValueError(f"Grid is badly formed. It has a value of "
                                  f"{self.grid[new_pos]} at position "
                                  f"{new_pos}.")
-        
 
-    def step(self, action: int) -> tuple[np.ndarray, float, bool]:
+
+    def step(self, action: int) -> tuple[tuple[int, int], Any, bool, dict, tuple[int | Any, int | Any]]:
         """This function makes the agent take a step on the grid.
 
         Action is provided as integer and values are:
@@ -231,16 +235,16 @@ class Environment:
             - 3: Move right
         Args:
             action: Integer representing the action the agent should
-                take. 
+                take.
 
         Returns:
             0) Current state,
             1) The reward for the agent,
             2) If the terminal state has been reached, and
         """
-        
+
         self.world_stats["total_steps"] += 1
-        
+
         # GUI specific code
         is_single_step = False
         if not self.no_gui:
@@ -255,7 +259,7 @@ class Environment:
                 paused_info = self._reset_info()
                 paused_info["agent_moved"] = True
                 self.gui.render(self.grid, self.agent_pos, paused_info,
-                                0, is_single_step)    
+                                0, is_single_step)
 
         # Add stochasticity into the agent action
         val = random.random()
@@ -263,15 +267,17 @@ class Environment:
             actual_action = action
         else:
             actual_action = random.randint(0, 3)
-        
+
         # Make the move
         self.info["actual_action"] = actual_action
-        direction = action_to_direction(actual_action)    
+        direction = action_to_direction(actual_action)
         new_pos = (self.agent_pos[0] + direction[0], self.agent_pos[1] + direction[1])
+        old_pos = self.agent_pos
+        reward = self.reward_fn(self.grid, new_pos)
+
         self._move_agent(new_pos)
 
         # Calculate the reward for the agent
-        reward = self.reward_fn(self.grid, new_pos)
         self.world_stats["cumulative_reward"] += reward
 
         # GUI specific code
@@ -282,7 +288,7 @@ class Environment:
             self.gui.render(self.grid, self.agent_pos, self.info,
                             reward, is_single_step)
 
-        return self.agent_pos, reward, self.terminal_state, self.info
+        return old_pos, reward, self.terminal_state, self.info, new_pos
 
     @staticmethod
     def _default_reward_function(grid, agent_pos) -> float:
@@ -302,9 +308,9 @@ class Environment:
 
         match grid[agent_pos]:
             case 0:  # Moved to an empty tile
-                reward = -1
+                reward = -0.1
             case 1 | 2:  # Moved to a wall or obstacle
-                reward = -5
+                reward = -1
                 pass
             case 3:  # Moved to a target tile
                 reward = 10
@@ -350,7 +356,7 @@ class Environment:
                           agent_start_pos=agent_start_pos,
                           target_fps=-1,
                           random_seed=random_seed)
-        
+
         state = env.reset()
         initial_grid = np.copy(env.grid)
 
@@ -358,9 +364,9 @@ class Environment:
         agent_path = [env.agent_pos]
 
         for _ in trange(max_steps, desc="Evaluating agent"):
-            
+
             action = agent.take_action(state)
-            state, _, terminated, _ = env.step(action)
+            state, _, terminated, _, _ = env.step(action)
 
             agent_path.append(state)
 
