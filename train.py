@@ -77,6 +77,21 @@ def moved_right(c_from, c_to):
 def hit_wall(grid, c_from, c_to):
     return grid[c_from[0]][c_from[1]] == 1 or grid[c_to[0]][c_to[1]] == 1 or grid[c_from[0]][c_from[1]] == 2 or grid[c_to[0]][c_to[1]] == 2
 
+def remaining_probability(P, p, action, grid, cols, rows, sigma):
+    act = [i for i in range(4)]
+    act.remove(action[0])
+    for a in act:
+        c_from = pointer(p, grid.shape[0])
+        c_to = (c_from[0] + action_to_direction(a)[0], c_from[1] + action_to_direction(a)[1])
+        if not (c_to[0] < 0 or c_to[1] < 0 or c_to[0] > cols - 1 or c_to[1] > rows - 1):
+            if not hit_wall(grid, c_from, c_to):
+                P[action[0]][p][c_to[0] + c_to[1] * cols] += sigma/4
+            else:
+                P[action[0]][p][p] += sigma/4
+        else: 
+            pass
+    return P
+
 # Construct the probability matrix
 def get_P_matrix(grid, size, actions, sigma, cols, rows):
     # Initialize probability matrix
@@ -92,63 +107,19 @@ def get_P_matrix(grid, size, actions, sigma, cols, rows):
                 # Have action to go down, next state is actually down and no obstacle is hit
                 elif action[0] == 0 and moved_down(c_from, c_to) and (not hit_wall(grid, c_from, c_to)):
                     P[action[0]][p][q] = 1-sigma+sigma/4
-                    act = [i for i in range(4)]
-                    act.remove(action[0])
-                    for a in act:
-                        c_from = pointer(p, grid.shape[0])
-                        c_to = (c_from[0] + action_to_direction(a)[0], c_from[1] + action_to_direction(a)[1])
-                        if not (c_to[0] < 0 or c_to[1] < 0 or c_to[0] > cols - 1 or c_to[1] > rows - 1):
-                            if not hit_wall(grid, c_from, c_to):
-                                P[action[0]][p][c_to[0] + c_to[1] * cols] += sigma/4
-                            else:
-                                P[action[0]][p][p] += sigma/4
-                        else: 
-                            pass
+                    P = remaining_probability(P, p, action, grid, cols, rows, sigma)
                 # Have action to go up, next state is actually up and no obstacle is hit
                 elif action[0] == 1 and moved_up(c_from, c_to) and (not hit_wall(grid, c_from, c_to)):
                     P[action[0]][p][q] = 1-sigma+sigma/4
-                    act = [i for i in range(4)]
-                    act.remove(action[0])
-                    for a in act:
-                        c_from = pointer(p, grid.shape[0])
-                        c_to = (c_from[0] + action_to_direction(a)[0], c_from[1] + action_to_direction(a)[1])
-                        if not (c_to[0] < 0 or c_to[1] < 0 or c_to[0] > cols - 1 or c_to[1] > rows - 1):
-                            if not hit_wall(grid, c_from, c_to):
-                                P[action[0]][p][c_to[0] + c_to[1] * cols] += sigma/4
-                            else:
-                                P[action[0]][p][p] += sigma/4
-                        else: 
-                            pass
+                    P = remaining_probability(P, p, action, grid, cols, rows, sigma)
                 # Have action to go left, next state is actually left and no obstacle is hit
                 elif action[0] == 2 and moved_left(c_from, c_to) and (not hit_wall(grid, c_from, c_to)):
                     P[action[0]][p][q] = 1-sigma+sigma/4
-                    act = [i for i in range(4)]
-                    act.remove(action[0])
-                    for a in act:
-                        c_from = pointer(p, grid.shape[0])
-                        c_to = (c_from[0] + action_to_direction(a)[0], c_from[1] + action_to_direction(a)[1])
-                        if not (c_to[0] < 0 or c_to[1] < 0 or c_to[0] > cols - 1 or c_to[1] > rows - 1):
-                            if not hit_wall(grid, c_from, c_to):
-                                P[action[0]][p][c_to[0] + c_to[1] * cols] += sigma/4
-                            else:
-                                P[action[0]][p][p] += sigma/4
-                        else:   
-                            pass
+                    P = remaining_probability(P, p, action, grid, cols, rows, sigma)
                 # Have action to go right, next state is actually right and no obstacle is hit
                 elif action[0] == 3 and moved_right(c_from, c_to) and (not hit_wall(grid, c_from, c_to)):
                     P[action[0]][p][q] = 1-sigma+sigma/4
-                    act = [i for i in range(4)]
-                    act.remove(action[0])
-                    for a in act:
-                        c_from = pointer(p, grid.shape[0])
-                        c_to = (c_from[0] + action_to_direction(a)[0], c_from[1] + action_to_direction(a)[1])
-                        if not (c_to[0] < 0 or c_to[1] < 0 or c_to[0] > cols - 1 or c_to[1] > rows - 1):
-                            if not hit_wall(grid, c_from, c_to):
-                                P[action[0]][p][c_to[0] + c_to[1] * cols] += sigma/4
-                            else:
-                                P[action[0]][p][p] += sigma/4
-                        else: 
-                            pass
+                    P = remaining_probability(P, p, action, grid, cols, rows, sigma)
 
     # Else we hit an obstacle, which means that our state does not change
     for action in range(4):
@@ -167,6 +138,20 @@ def move(state: tuple[int, int], action: int):
         return (state[0] - 1, state[1])
     elif action == 3:
         return (state[0] + 1, state[1])
+    
+def remaining_reward(action, p, grid, sigma):
+    act = [i for i in range(4)]
+    act.remove(action)
+    reward = 0
+    for a in act:
+        next_state = move(pointer(p, grid.shape[0]), a)
+        if grid[next_state[0]][next_state[1]] == 1 or grid[next_state[0]][next_state[1]] == 2:
+            reward += -2*(sigma/4)
+        elif grid[next_state[0]][next_state[1]] == 0:
+            reward += -1*(sigma/4)
+        elif grid[next_state[0]][next_state[1]] == 3:
+            reward += 10*(sigma/4)
+    return reward
 
 # Construct the reward matrix
 def get_R_matrix(grid, size, actions, sigma):
@@ -184,43 +169,13 @@ def get_R_matrix(grid, size, actions, sigma):
                 R[action][p] = -1000
             # Start from a legal cell (empty) and move into an illegal cell (boundary or obstacle)
             elif (grid[c_to[0]][c_to[1]] == 1 or grid[c_to[0]][c_to[1]] == 2) and grid[c_from[0]][c_from[1]] != 3:
-                R[action][p] = -2*(1-3*(sigma/4))
-                act = [i for i in range(4)]
-                act.remove(action)
-                for a in act:
-                    next_state = move(pointer(p, grid.shape[0]), a)
-                    if grid[next_state[0]][next_state[1]] == 1 or grid[next_state[0]][next_state[1]] == 2:
-                        R[action][p] += -2*(sigma/4)
-                    elif grid[next_state[0]][next_state[1]] == 0:
-                        R[action][p] += -1*(sigma/4)
-                    elif grid[next_state[0]][next_state[1]] == 3:
-                        R[action][p] += 10*(sigma/4)
+                R[action][p] = -2*(1-3*(sigma/4)) + remaining_reward(action, p, grid, sigma)
             # Start from a legal cell (empty) and move into a legal cell (empty)
             elif (grid[c_to[0]][c_to[1]] == 0) and grid[c_from[0]][c_from[1]] != 3:
-                R[action][p] = -1*(1-3*(sigma/4))
-                act = [i for i in range(4)]
-                act.remove(action)
-                for a in act:
-                    next_state = move(pointer(p, grid.shape[0]), a)
-                    if grid[next_state[0]][next_state[1]] == 1 or grid[next_state[0]][next_state[1]] == 2:
-                        R[action][p] += -2*(sigma/4)
-                    elif grid[next_state[0]][next_state[1]] == 0:
-                        R[action][p] += -1*(sigma/4)
-                    elif grid[next_state[0]][next_state[1]] == 3:
-                        R[action][p] += 10*(sigma/4)
+                R[action][p] = -1*(1-3*(sigma/4)) + remaining_reward(action, p, grid, sigma)
             # Start from a legal cell (empty) and move into the target (dirt or charger)
             elif (grid[c_to[0]][c_to[1]] == 3 or grid[c_to[0]][c_to[1]] == 4) and grid[c_from[0]][c_from[1]] != 3:
-                R[action][p] = 10*(1-3*(sigma/4))
-                act = [i for i in range(4)]
-                act.remove(action)
-                for a in act:
-                    next_state = move(pointer(p, grid.shape[0]), a)
-                    if grid[next_state[0]][next_state[1]] == 1 or grid[next_state[0]][next_state[1]] == 2:
-                        R[action][p] += -2*(sigma/4)
-                    elif grid[next_state[0]][next_state[1]] == 0:
-                        R[action][p] += -1*(sigma/4)
-                    elif grid[next_state[0]][next_state[1]] == 3:
-                        R[action][p] += 10*(sigma/4)
+                R[action][p] = 10*(1-3*(sigma/4)) + remaining_reward(action, p, grid, sigma)
     return R
 
 # Construct a state for each cell in the grid
@@ -255,8 +210,6 @@ def main(
         P = get_P_matrix(env.grid, len(nr_states), actionSpace, sigma, env.grid.shape[0], env.grid.shape[1])
         R = get_R_matrix(env.grid, len(nr_states), actionSpace, sigma)
         agent = ValueAgent(stateSpace, actionSpace, 0.9, env.grid.shape[0], P, R)
-        for r in R:
-            print(r)
 
         # Always reset the environment to initial state
         state = env.reset()
