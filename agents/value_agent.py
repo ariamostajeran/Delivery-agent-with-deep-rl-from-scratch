@@ -81,7 +81,7 @@ class ValueAgent(BaseAgent):
                 # Get best action to take based on updated policy
                 action = self.take_action(state)
                 # Perform the step in the environment
-                _, reward, terminated, _, state = self.env.step(action)
+                state, reward, terminated, _ = self.env.step(action)
                 cum_reward += reward
                 # Perform another run when target is reached
                 if terminated:

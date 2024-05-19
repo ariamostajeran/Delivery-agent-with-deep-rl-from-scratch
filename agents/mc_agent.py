@@ -82,7 +82,7 @@ class MonteCarloAgent(BaseAgent):
                 else:
                     action = self.take_action(state)
 
-                next_state, reward, terminated, _, _ = self.env.step(action)
+                next_state, reward, terminated, _ = self.env.step(action)
                 state_action_reward_list.append((state, action, reward))
                 state = next_state
                 cum_reward += reward
