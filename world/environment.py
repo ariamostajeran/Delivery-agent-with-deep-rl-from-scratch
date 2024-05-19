@@ -225,6 +225,7 @@ class Environment:
                                  f"{new_pos}.")
 
 
+
     def step(self, action: int) -> tuple[tuple[int, int], Any, bool, dict, tuple[int | Any, int | Any]]:
         """This function makes the agent take a step on the grid.
 
@@ -235,16 +236,16 @@ class Environment:
             - 3: Move right
         Args:
             action: Integer representing the action the agent should
-                take.
+                take. 
 
         Returns:
             0) Current state,
             1) The reward for the agent,
             2) If the terminal state has been reached, and
         """
-
+        
         self.world_stats["total_steps"] += 1
-
+        
         # GUI specific code
         is_single_step = False
         if not self.no_gui:
@@ -259,7 +260,7 @@ class Environment:
                 paused_info = self._reset_info()
                 paused_info["agent_moved"] = True
                 self.gui.render(self.grid, self.agent_pos, paused_info,
-                                0, is_single_step)
+                                0, is_single_step)    
 
         # Add stochasticity into the agent action
         val = random.random()
@@ -267,7 +268,7 @@ class Environment:
             actual_action = action
         else:
             actual_action = random.randint(0, 3)
-
+        
         # Make the move
         self.info["actual_action"] = actual_action
         direction = action_to_direction(actual_action)
@@ -288,7 +289,7 @@ class Environment:
             self.gui.render(self.grid, self.agent_pos, self.info,
                             reward, is_single_step)
 
-        return old_pos, reward, self.terminal_state, self.info, new_pos
+        return old_pos, reward, self.terminal_state, self.info, self.agent_pos
 
     @staticmethod
     def _default_reward_function(grid, agent_pos) -> float:

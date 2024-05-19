@@ -280,6 +280,7 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
                        state_space=make_states(env.grid.shape[0], env.grid.shape[1]), 
                        action_space=range(4),
                        gamma=gamma,
+                       sigma=sigma,
                        random_seed=random_seed)        
         elif agent_name == "mc":
             agent = MonteCarloAgent(env,
