@@ -289,7 +289,7 @@ class Environment:
             self.gui.render(self.grid, self.agent_pos, self.info,
                             reward, is_single_step)
 
-        return old_pos, reward, self.terminal_state, self.info, self.agent_pos
+        return old_pos, reward, self.terminal_state, self.info, new_pos
 
     @staticmethod
     def _default_reward_function(grid, agent_pos) -> float:
