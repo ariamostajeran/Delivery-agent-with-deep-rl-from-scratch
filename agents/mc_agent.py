@@ -34,13 +34,14 @@ class MonteCarloAgent(BaseAgent):
             G_value = self.gamma*G_value + reward
 
             state_index = self.encode_state(state)
+            
+            if (state, action) not in [(state, action) for state, action, _ in state_action_reward_list[:-idx]]:
+                # Increment the amount of observations for this state-action pair
+                self.n_visits[state_index, action] += 1
 
-            # Increment the amount of observations for this state-action pair
-            self.n_visits[state_index, action] += 1
-
-            # Updating q-values
-            self.q_values[state_index, action] += G_value / self.n_visits[state_index, action]
-            idx += 1
+                # Updating q-values
+                self.q_values[state_index, action] += G_value / self.n_visits[state_index, action]
+                idx += 1
 
     def encode_state(self, state):
         return state[0] * self.grid_width + state[1]

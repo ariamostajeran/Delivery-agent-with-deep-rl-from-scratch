@@ -51,9 +51,15 @@ def parse_args():
     p.add_argument("--plot_rewards", action="store_true", help="Plot cumulative rewards")
     p.add_argument("--vis_matrix", action="store_true", help="Visualize V or Q matrix")
     p.add_argument("--hyperparameters_tuning", action="store_true", help="Perform hyperparameters tuning")
+    p.add_argument("--compare_grids", action="store_true", help="Perform hyperparameters tuning")
     p.add_argument("--expl_tradeoff", action="store_true", help="Plot exploration/exploitation trade-off")
     return p.parse_args()
 
+agent_args_name_map = {
+    "qlearning" : "Q-Learning",
+    "value" : "Value Iteration",
+    "mc" : "Monte Carlo"
+}    
 
 def plot_experiment(data, xlabel, ylabel, title):
     plt.figure(figsize=(10, 5))
@@ -252,9 +258,24 @@ def hyperparameter_search(env: Environment, random_seed: int, agent_name: str, i
         raise ValueError(f"Agent name doesn't exists")
 
 
+def plot_all_grid_rewards(all_rewards, grid_paths, xlabel, ylabel, title):
+    plt.figure(figsize=(10, 5))
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.title(title)
+    plt.grid(True)
+
+    for rewards, grid in zip(all_rewards, grid_paths):
+        grid_name = str(grid).split("/")[1].split(".")[0]
+        plt.plot(rewards, label=grid_name)
+    
+    plt.legend()
+    plt.show()
 
 def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
-         sigma: float, random_seed: int, agent_name: str, gamma: float, alpha: float = None, epsilon: float = None, plot_rewards: bool = False, vis_matrix: bool = False, hyperparameters_tuning: bool = False, expl_tradeoff: bool = False):
+         sigma: float, random_seed: int, agent_name: str, gamma: float, alpha: float = None, 
+         epsilon: float = None, plot_rewards: bool = False, vis_matrix: bool = False, 
+         hyperparameters_tuning: bool = False, expl_tradeoff: bool = False, compare_grids : bool = False):
     """Main loop of the program."""
 
     #Hyperparameters
@@ -262,12 +283,15 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
     gamma = gamma
     epsilon = epsilon if epsilon is not None else 0.1
 
+    if compare_grids:
+        plot_rewards = False
+        cum_reward_per_grid = [] 
+
     for grid in grid_paths:
         # Set up the environment
         env = Environment(grid, no_gui, sigma=sigma, target_fps=fps,
                           random_seed=random_seed, reward_fn=reward_fn)
 
-        cum_rewards = []
         if agent_name == "qlearning":
             agent = QLearningAgent(env, 
                             num_actions=len(range(4)),
@@ -289,14 +313,18 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
                             random_seed=random_seed)
         else:
             raise ValueError(f"Agent name doesn't exists")
-
-
+        
+        agent_name_clean = agent_args_name_map[agent_name]
         results = agent.train(iters)
+
+        if compare_grids:
+            cum_reward_per_grid.append(results[0])
 
         if plot_rewards:
             #Training        
             cum_rewards = results[0]
-            plot_experiment(cum_rewards, 'Iterations', 'Cumulative Reward', 'Average Cumulative Rewards Over Training Iterations')
+            plot_experiment(cum_rewards, 'Iterations', 'Cumulative Reward', 
+                            f'Cumulative rewards for {agent_name_clean} agent')
         
         if vis_matrix:
             print("Visualizing V matrix")
@@ -310,7 +338,13 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
 
         Environment.evaluate_agent(grid_fp=grid, agent=agent, max_steps=iters, sigma=env.sigma, random_seed=random_seed)
 
+    if compare_grids:
+        plot_all_grid_rewards(cum_reward_per_grid, grid_paths, 'Iterations', 
+                              'Cumulative Reward', f'Cumulative rewards per grid for {agent_name_clean} agent')
 
 if __name__ == '__main__':
     args = parse_args()
-    main(args.GRID, args.no_gui, args.iter, args.fps, args.sigma, args.random_seed, args.agent, args.gamma, args.alpha, args.epsilon, args.plot_rewards, args.vis_matrix, args.hyperparameters_tuning, args.expl_tradeoff)
+    main(args.GRID, args.no_gui, args.iter, args.fps, args.sigma, 
+         args.random_seed, args.agent, args.gamma, args.alpha, 
+         args.epsilon, args.plot_rewards, args.vis_matrix, 
+         args.hyperparameters_tuning, args.expl_tradeoff, args.compare_grids)
