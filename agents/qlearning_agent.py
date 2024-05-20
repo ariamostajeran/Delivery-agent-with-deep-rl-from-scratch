@@ -4,19 +4,23 @@ from agents import BaseAgent
 from tqdm import trange
 
 class QLearningAgent(BaseAgent):
-    def __init__(self, env, num_actions, alpha, gamma, epsilon, random_seed):
+    def __init__(self, env, num_actions, alpha, gamma, epsilon, min_epsilon, decay, random_seed):
         super().__init__(env)
         self.num_actions = num_actions
         self.alpha = alpha
         self.gamma = gamma
         self.epsilon = epsilon
+        self.min_epsilon = min_epsilon
+        self.decay = decay
         self.q_values = np.zeros((self.num_states, num_actions))
         self.grid_width = self.env.grid.shape[1]
+
         self.random_seed = random_seed
 
     def encode_state(self, state):
         return state[0] * self.grid_width + state[1]
-
+    def update_epsilon(self):
+        self.epsilon = min(self.epsilon*self.decay, self.min_epsilon)
     def update(self, state, next_state, reward, action):
         # Q-Learning update rule
         state_index = self.encode_state(state)

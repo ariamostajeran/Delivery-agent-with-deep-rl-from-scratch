@@ -299,11 +299,16 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
                           random_seed=random_seed, reward_fn=reward_fn)
 
         if agent_name == "qlearning":
+            min_epsilon = 0.0001
+            decay = 0.95
+            init_epsilon = 0.8
             agent = QLearningAgent(env, 
                             num_actions=len(range(4)),
                             alpha=alpha,
                             gamma=gamma,
-                            epsilon=epsilon,
+                            epsilon=init_epsilon,
+                            min_epsilon=min_epsilon,
+                            decay=decay,
                             random_seed=random_seed)        
         elif agent_name == "value":
             agent = ValueAgent(env, 
