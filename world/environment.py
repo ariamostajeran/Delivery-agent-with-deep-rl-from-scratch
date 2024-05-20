@@ -3,8 +3,6 @@ Environment.
 """
 import random
 import datetime
-from typing import Tuple, Any
-
 import numpy as np
 from tqdm import trange
 from pathlib import Path
@@ -34,7 +32,6 @@ except ModuleNotFoundError:
     from world.grid import Grid
     from world.gui import GUI
     from world.path_visualizer import visualize_path
-
 
 class Environment:
     def __init__(self,
@@ -76,12 +73,12 @@ class Environment:
             raise FileNotFoundError(f"Grid {grid_fp} does not exist.")
         else:
             self.grid_fp = grid_fp
-        self.grid = Grid.load_grid(self.grid_fp).cells
 
         # Initialize other variables
         self.agent_start_pos = agent_start_pos
         self.terminal_state = False
         self.sigma = sigma
+        self.grid = Grid.load_grid(self.grid_fp).cells
 
         # Set up reward function
         if reward_fn is None:
@@ -214,18 +211,24 @@ class Environment:
                 self.grid[new_pos] = 0
                 if np.sum(self.grid == 3) == 0:
                     self.terminal_state = True
+                self.terminal_state = True
                 self.info["target_reached"] = True
                 self.world_stats["total_targets_reached"] += 1
                 self.info["agent_moved"] = True
                 self.world_stats["total_agent_moves"] += 1
                 # Otherwise, the agent can't move and nothing happens
+            case 4:
+                self.agent_pos = new_pos
+                self.info["agent_moved"] = True
+                self.world_stats["total_agent_moves"] += 1
+
             case _:
                 raise ValueError(f"Grid is badly formed. It has a value of "
                                  f"{self.grid[new_pos]} at position "
                                  f"{new_pos}.")
 
 
-    def step(self, action: int) -> tuple[tuple[int, int], Any, bool, dict, tuple[int | Any, int | Any]]:
+    def step(self, action: int) -> tuple[np.ndarray, float, bool]:
         """This function makes the agent take a step on the grid.
 
         Action is provided as integer and values are:
@@ -272,12 +275,8 @@ class Environment:
         self.info["actual_action"] = actual_action
         direction = action_to_direction(actual_action)
         new_pos = (self.agent_pos[0] + direction[0], self.agent_pos[1] + direction[1])
-        old_pos = self.agent_pos
         reward = self.reward_fn(self.grid, new_pos)
-
         self._move_agent(new_pos)
-
-        # Calculate the reward for the agent
         self.world_stats["cumulative_reward"] += reward
 
         # GUI specific code
@@ -288,7 +287,7 @@ class Environment:
             self.gui.render(self.grid, self.agent_pos, self.info,
                             reward, is_single_step)
 
-        return old_pos, reward, self.terminal_state, self.info, new_pos
+        return self.agent_pos, reward, self.terminal_state, self.info
 
     @staticmethod
     def _default_reward_function(grid, agent_pos) -> float:
@@ -308,9 +307,9 @@ class Environment:
 
         match grid[agent_pos]:
             case 0:  # Moved to an empty tile
-                reward = -0.1
-            case 1 | 2:  # Moved to a wall or obstacle
                 reward = -1
+            case 1 | 2:  # Moved to a wall or obstacle
+                reward = -5
                 pass
             case 3:  # Moved to a target tile
                 reward = 10
@@ -366,7 +365,7 @@ class Environment:
         for _ in trange(max_steps, desc="Evaluating agent"):
 
             action = agent.take_action(state)
-            state, _, terminated, _, _ = env.step(action)
+            state, _, terminated, _ = env.step(action)
 
             agent_path.append(state)
 

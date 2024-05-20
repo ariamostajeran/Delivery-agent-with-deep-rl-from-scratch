@@ -2,6 +2,8 @@
 Train your RL Agent in this file. 
 """
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+import numpy as np
 from argparse import ArgumentParser
 from pathlib import Path
 from tqdm import trange
@@ -43,144 +45,63 @@ def parse_args():
 
     p.add_argument("--random_seed", type=int, default=0,
                    help="Random seed value for the environment.")
+    p.add_argument("--gamma", type=float, default=0.9, help="Discount factor.")
+    p.add_argument("--alpha", type=float, default=None, help="Learning rate.")
+    p.add_argument("--epsilon", type=float, default=None, help="Exploration rate.")
+    p.add_argument("--plot_rewards", action="store_true", help="Plot cumulative rewards")
+    p.add_argument("--vis_matrix", action="store_true", help="Visualize V or Q matrix")
+    p.add_argument("--hyperparameters_tuning", action="store_true", help="Perform hyperparameters tuning")
+    p.add_argument("--compare_grids", action="store_true", help="Perform hyperparameters tuning")
+    p.add_argument("--expl_tradeoff", action="store_true", help="Plot exploration/exploitation trade-off")
     return p.parse_args()
 
+agent_args_name_map = {
+    "qlearning" : "Q-Learning",
+    "value" : "Value Iteration",
+    "mc" : "Monte Carlo"
+}
 
-def train_qlearning(env, grid, sigma, iters, random_seed):
-    grid_shape = env.grid.shape
-    num_states = grid_shape[0] * grid_shape[1]
-    max_step = num_states * 2
-    # Initialize agent
-
-    agent = QLearningAgent(num_states, 4, grid_width=grid_shape[1])
-    # Always reset the environment to initial state
-    state = env.reset()
-
-    cum_rewards = []
-    monitor_time = iters / 20
-    cum_reward = 0
-    for iteration in trange(iters):
-        # print(" Iteration ", iter)
-        for i in range(max_step):
-
-            # Agent takes an action based on the latest observation and info.
-            action = agent.take_action(state)
-
-            # The action is performed in the environment
-            state, reward, terminated, info, next_state = env.step(action)
-
-            agent.update(state, next_state, reward, info["actual_action"])
-            cum_reward += reward
-            # If the final state is reached, stop.
-            if terminated or i == max_step - 1:
-                env.reset()
-                break
-        if iteration % monitor_time == 0:
-            cum_rewards.append(cum_reward / monitor_time) # mean of cum rewards of the past episodes
-            cum_reward = 0
-
-    # Evaluate the agent
-    Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed)
-    return cum_rewards
-
-
-def train_mc_agent(env, grid, sigma, iters, random_seed):
-    grid_shape = env.grid.shape
-    num_states = grid_shape[0] * grid_shape[1]
-    max_step = num_states * 2
-
-    agent = MonteCarloAgent(num_states, 4, grid_width=grid_shape[1])
-
-    cum_rewards = []
-    monitor_time = iters / 20
-    cum_reward = 0
-    for iteration in trange(iters):
-        # Place agent randomly on grid (exploring starts)
-        state = env.reset()
-
-        # List to store state-action history and corresponding rewards
-        state_action_reward_list = []
-
-        for step in range(max_step):
-
-            # First action will always be random
-            if step == 0:
-                action = agent.take_random_action(state)
-
-            # Remaining actions are greedy
-            else:
-                action = agent.take_action(state)
-
-            previous_state = state
-            state, reward, terminated, _, _ = env.step(action)
-            state_action_reward_list.append((previous_state, action, reward))
-            cum_reward += reward
-
-            # If the final state is reached, stop.
-            if terminated:
-                break
-        if iteration % monitor_time == 0:
-            cum_rewards.append(cum_reward / monitor_time)  # mean of cum rewards of the past episodes
-            cum_reward = 0
-
-        agent.update(state_action_reward_list)
-
-    # Evaluate the agent
-    Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed)
-    return cum_rewards
-
-
-def train_value_agent(env, grid, sigma, iters, random_seed):
-    grid_shape = env.grid.shape
-    stateSpace = make_states(grid_shape[0], grid_shape[1])
-    actionSpace = range(4)
-    nr_states = range(grid_shape[0] * grid_shape[1])
-    num_states = grid_shape[0] * grid_shape[1]
-    max_step = num_states * 2
-
-    P = get_P_matrix(env.grid, len(nr_states), actionSpace)
-    R = get_R_matrix(env.grid, len(nr_states), actionSpace)
-    agent = ValueAgent(stateSpace, actionSpace, 0.9, env.grid.shape[0], P, R)
-    # Always reset the environment to initial state
-    state = env.reset()
-
-    cum_rewards = []
-    monitor_time = iters / 20
-    cum_reward = 0
-
-    for iteration in trange(iters):
-
-        for step in range(max_step):
-
-            # Update expected value matrix and policy
-            agent.update(stateSpace)
-            # Get best action to take based on updated policy
-            action = agent.take_action(state)
-            # Perform the step in the environment
-            state, reward, terminated, _, _ = env.step(action)
-            cum_reward += reward
-            # Perform another run when target is reached
-            if terminated:
-                env.reset()
-                break
-
-        if iteration % monitor_time == 0:
-            cum_rewards.append(cum_reward / monitor_time)  # mean of cum rewards of the past episodes
-            cum_reward = 0
-        # Evaluate the agent
-    Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed)
-    return cum_rewards
-
-
-def plot_cum_rewards(cum_rewards):
+def plot_experiment(data, xlabel, ylabel, title):
     plt.figure(figsize=(10, 5))
-    plt.plot(cum_rewards, label='Cumulative Rewards')
-    plt.xlabel('Iterations')
-    plt.ylabel('Cumulative Reward')
-    plt.title('Average Cumulative Rewards Over Training Iterations')
+    plt.plot(data, label=ylabel)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.title(title)
     plt.legend()
     plt.grid(True)
     plt.show()
+
+def plot_v_matrix(agent, grid_shape, agent_name):
+    """Plot the V matrix as a heatmap."""
+
+    if agent_name == "value":
+        V = agent.V
+        V = [V[i] if V[i] > -9999 else np.nan for i in range(len(V))]
+
+        V = np.array(V).reshape((grid_shape[1], grid_shape[0]))
+
+        # Create a colormap that treats np.nan values as black
+        cmap = cm.viridis
+        cmap.set_bad(color='black')
+
+    elif agent_name == "qlearning" or agent_name == "mc":
+        Q = np.array(agent.q_values)
+        Q = Q.reshape((grid_shape[1], grid_shape[0], 4))
+
+        # Create a colormap that treats np.nan values as black
+        cmap = cm.viridis
+        cmap.set_bad(color='black')
+
+        # Calculate V matrix
+        V = np.max(Q, axis=2)
+
+    # Plot V matrix
+    plt.imshow(V, cmap=cmap, interpolation='nearest')
+    plt.colorbar(label='Value')
+    plt.title('V Matrix Heatmap')
+    plt.show()
+
+
 
 def reward_fn(grid, agent_pos) -> float:
 
@@ -189,38 +110,250 @@ def reward_fn(grid, agent_pos) -> float:
             reward = -0.1
         case 1 | 2:  # Moved to a wall or obstacle
             reward = -1
-
         case 3:  # Moved to a target tile
             reward = 10
             # "Illegal move"
+        case 4:
+            reward = -0.1
         case _:
             raise ValueError(f"Grid cell should not have value: {grid[agent_pos]}.",
                              f"at position {agent_pos}")
     return reward
 
 
+def hyperparameter_search(env: Environment, random_seed: int, agent_name: str, iters: int):
+    """Perform a hyperparameter search over a range of values."""
+
+    # Define the range of hyperparameters to test
+    gamma_values = [0.9, 0.95, 0.99]
+    alpha_values = [0.1, 0.2, 0.3]
+    epsilon_values = [0.1, 0.2, 0.3]
+
+    # Set default values
+    default_gamma = 0.9
+    default_alpha = 0.1
+    default_epsilon = 0.1
+
+
+    if agent_name == "qlearning":
+        plt.figure(figsize=(15, 10))
+        plt.subplot(3, 1, 1)
+        cum_rewards = []
+        for gamma in gamma_values:
+            cum_rewards_gamma = []
+            agent = QLearningAgent(env,
+                            num_actions=len(range(4)),
+                            alpha=default_alpha,
+                            gamma=gamma,
+                            epsilon=default_epsilon,
+                            random_seed=random_seed)
+            cum_rewards_gamma = agent.train(iters)[0]
+            # Plot cum rewards over iterations
+            cum_rewards.append(cum_rewards_gamma)
+
+        # Plot cumulative rewards over iterations for each gamma value
+        for i, gamma in enumerate(gamma_values):
+            plt.plot(cum_rewards[i], label=f'Gamma={gamma}')
+
+        plt.xlabel('Iterations')
+        plt.ylabel('Cumulative Reward')
+        plt.title('Average Cumulative Rewards Over Training Iterations')
+        plt.legend()
+        plt.grid(True)
+
+        plt.subplot(3, 1, 2)
+        cum_rewards = []
+        for alpha in alpha_values:
+            cum_rewards_alpha = []
+            agent = QLearningAgent(env,
+                            num_actions=len(range(4)),
+                            alpha=alpha,
+                            gamma=default_gamma,
+                            epsilon=default_epsilon,
+                            random_seed=random_seed)
+            cum_rewards_alpha = agent.train(iters)[0]
+            # Plot cum rewards over iterations
+            cum_rewards.append(cum_rewards_alpha)
+
+        # Plot cumulative rewards over iterations for each alpha value
+        for i, alpha in enumerate(alpha_values):
+            plt.plot(cum_rewards[i], label=f'Alpha={alpha}')
+
+        plt.xlabel('Iterations')
+        plt.ylabel('Cumulative Reward')
+        plt.title('Average Cumulative Rewards Over Training Iterations')
+        plt.legend()
+        plt.grid(True)
+
+        plt.subplot(3, 1, 3)
+        cum_rewards = []
+        for epsilon in epsilon_values:
+            cum_rewards_epsilon = []
+            agent = QLearningAgent(env,
+                            num_actions=len(range(4)),
+                            alpha=default_alpha,
+                            gamma=default_gamma,
+                            epsilon=epsilon,
+                            random_seed=random_seed)
+            cum_rewards_epsilon = agent.train(iters)[0]
+            # Plot cum rewards over iterations
+            cum_rewards.append(cum_rewards_epsilon)
+
+        # Plot cumulative rewards over iterations for each epsilon value
+        for i, epsilon in enumerate(epsilon_values):
+            plt.plot(cum_rewards[i], label=f'Epsilon={epsilon}')
+
+        plt.xlabel('Iterations')
+        plt.ylabel('Cumulative Reward')
+        plt.title('Average Cumulative Rewards Over Training Iterations')
+        plt.legend()
+        plt.grid(True)
+        plt.show()
+
+
+    elif agent_name == "value":
+        plt.figure(figsize=(10, 7))
+        cum_rewards = []
+        for gamma in gamma_values:
+            agent = ValueAgent(env,
+                        state_space=make_states(env.grid.shape[0], env.grid.shape[1]),
+                        action_space=range(4),
+                        gamma=gamma,
+                        random_seed=random_seed)
+            cum_rewards_gamma = agent.train(iters)[0]
+            cum_rewards.append(cum_rewards_gamma)
+
+        # Plot cumulative rewards over iterations for each gamma value
+        for i, gamma in enumerate(gamma_values):
+            plt.plot(cum_rewards[i], label=f'Gamma={gamma}')
+
+        plt.xlabel('Iterations')
+        plt.ylabel('Cumulative Reward')
+        plt.title('Average Cumulative Rewards Over Training Iterations')
+        plt.legend()
+        plt.grid(True)
+        plt.show()
+
+    elif agent_name == "mc":
+        plt.figure(figsize=(10, 7))
+        cum_rewards = []
+        for gamma in gamma_values:
+            agent = MonteCarloAgent(env,
+                        num_actions=4,
+                        gamma=gamma,
+                        random_seed=random_seed)
+            cum_rewards_gamma = agent.train(iters)[0]
+            cum_rewards.append(cum_rewards_gamma)
+
+        # Plot cumulative rewards over iterations for each gamma value
+        for i, gamma in enumerate(gamma_values):
+            plt.plot(cum_rewards[i], label=f'Gamma={gamma}')
+
+        plt.xlabel('Iterations')
+        plt.ylabel('Cumulative Reward')
+        plt.title('Average Cumulative Rewards Over Training Iterations')
+        plt.legend()
+        plt.grid(True)
+        plt.show()
+
+    else:
+        raise ValueError(f"Agent name doesn't exists")
+
+
+def plot_all_grid_rewards(all_rewards, grid_paths, xlabel, ylabel, title):
+    plt.figure(figsize=(10, 5))
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.title(title)
+    plt.grid(True)
+
+    for rewards, grid in zip(all_rewards, grid_paths):
+        grid_name = str(grid).split("/")[1].split(".")[0]
+        plt.plot(rewards, label=grid_name)
+
+    plt.legend()
+    plt.show()
+
 def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
-         sigma: float, random_seed: int, agent_name: str):
+         sigma: float, random_seed: int, agent_name: str, gamma: float, alpha: float = None,
+         epsilon: float = None, plot_rewards: bool = False, vis_matrix: bool = False,
+         hyperparameters_tuning: bool = False, expl_tradeoff: bool = False, compare_grids : bool = False):
     """Main loop of the program."""
+
+    #Hyperparameters
+    alpha = alpha if alpha is not None else 0.1
+    gamma = gamma
+    epsilon = epsilon if epsilon is not None else 0.1
+
+    if compare_grids:
+        plot_rewards = False
+        cum_reward_per_grid = []
 
     for grid in grid_paths:
         # Set up the environment
         env = Environment(grid, no_gui, sigma=sigma, target_fps=fps,
                           random_seed=random_seed, reward_fn=reward_fn)
 
-        cum_rewards = []
         if agent_name == "qlearning":
-            cum_rewards = train_qlearning(env, grid, sigma, iters, random_seed)
+            init_epsilon = 0.8
+            epsilon_decay = 0.9
+            min_epsilon = 0.0001
+            agent = QLearningAgent(env,
+                                   num_actions=len(range(4)),
+                                   alpha=alpha,
+                                   gamma=gamma,
+                                   epsilon=init_epsilon,
+                                   epsilon_decay=epsilon_decay,
+                                   min_epsilon=min_epsilon,
+                                   random_seed=random_seed)
+            agent.set_epsilon(0)
 
         elif agent_name == "value":
-            cum_rewards = train_value_agent(env, grid, sigma, iters, random_seed)
+            agent = ValueAgent(env,
+                       state_space=make_states(env.grid.shape[0], env.grid.shape[1]),
+                       action_space=range(4),
+                       gamma=gamma,
+                       sigma=sigma,
+                       random_seed=random_seed)
         elif agent_name == "mc":
-            cum_rewards = train_mc_agent(env, grid, sigma, iters, random_seed)
+            agent = MonteCarloAgent(env,
+                            num_actions=4,
+                            gamma=gamma,
+                            random_seed=random_seed)
         else:
             raise ValueError(f"Agent name doesn't exists")
-        plot_cum_rewards(cum_rewards)
 
+        agent_name_clean = agent_args_name_map[agent_name]
+        results = agent.train(iters)
+
+        if compare_grids:
+            cum_reward_per_grid.append(results[0])
+
+        if plot_rewards:
+            #Training
+            cum_rewards = results[0]
+            plot_experiment(cum_rewards, 'Iterations', 'Cumulative Reward',
+                            f'Cumulative rewards for {agent_name_clean} agent')
+
+        if vis_matrix:
+            print("Visualizing V matrix")
+            plot_v_matrix(agent, env.grid.shape, agent_name)
+
+        if hyperparameters_tuning:
+            hyperparameter_search(env, random_seed, agent_name, iters)
+
+        if expl_tradeoff and len(results) > 1:
+            plot_experiment(results[1], 'Iterations', 'Trade-off', 'Exploration/Exploitation trade-off')
+
+        Environment.evaluate_agent(grid_fp=grid, agent=agent, max_steps=iters, sigma=env.sigma, random_seed=random_seed)
+
+    if compare_grids:
+        plot_all_grid_rewards(cum_reward_per_grid, grid_paths, 'Iterations',
+                              'Cumulative Reward', f'Cumulative rewards per grid for {agent_name_clean} agent')
 
 if __name__ == '__main__':
     args = parse_args()
-    main(args.GRID, args.no_gui, args.iter, args.fps, args.sigma, args.random_seed, args.agent)
+    main(args.GRID, args.no_gui, args.iter, args.fps, args.sigma,
+         args.random_seed, args.agent, args.gamma, args.alpha,
+         args.epsilon, args.plot_rewards, args.vis_matrix,
+         args.hyperparameters_tuning, args.expl_tradeoff, args.compare_grids)
