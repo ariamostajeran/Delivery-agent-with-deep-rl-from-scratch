@@ -55,7 +55,7 @@ def parse_args():
     p.add_argument("--expl_tradeoff", action="store_true", help="Plot exploration/exploitation trade-off")
     return p.parse_args()
 
-agent_args_name_map = {
+agent_name_map = {
     "qlearning" : "Q-Learning",
     "value" : "Value Iteration",
     "mc" : "Monte Carlo"
@@ -74,7 +74,7 @@ def plot_experiment(data, xlabel, ylabel, title):
 def plot_v_matrix(agent, grid_shape, agent_name):
     """Plot the V matrix as a heatmap."""
 
-    if agent_name == "value":
+    if agent_name == "Value Iteration":
         V = agent.V
         V = [V[i] if V[i] > -9999 else np.nan for i in range(len(V))]
         
@@ -84,7 +84,7 @@ def plot_v_matrix(agent, grid_shape, agent_name):
         cmap = cm.viridis
         cmap.set_bad(color='black')
 
-    elif agent_name == "qlearning" or agent_name == "mc":
+    elif agent_name == "Q-Learning" or agent_name == "Monte Carlo":
         Q = np.array(agent.q_values)
         Q = Q.reshape((grid_shape[1], grid_shape[0], 4))
 
@@ -98,9 +98,8 @@ def plot_v_matrix(agent, grid_shape, agent_name):
     # Plot V matrix
     plt.imshow(V, cmap=cmap, interpolation='nearest')
     plt.colorbar(label='Value')
-    plt.title('V Matrix Heatmap')
+    plt.title(f'V-Matrix Heatmap for {agent_name}')
     plt.show()
-
 
 
 def reward_fn(grid, agent_pos) -> float:
@@ -119,11 +118,11 @@ def reward_fn(grid, agent_pos) -> float:
     return reward
 
 
-def hyperparameter_search(env: Environment, random_seed: int, agent_name: str, iters: int):
+def hyperparameter_search(env: Environment, random_seed: int, agent_name: str, iters: int, sigma: float):
     """Perform a hyperparameter search over a range of values."""
 
     # Define the range of hyperparameters to test
-    gamma_values = [0.9, 0.95, 0.99]
+    gamma_values = [0.5, 0.8, 0.95]
     alpha_values = [0.1, 0.2, 0.3]
     epsilon_values = [0.1, 0.2, 0.3]
 
@@ -132,8 +131,11 @@ def hyperparameter_search(env: Environment, random_seed: int, agent_name: str, i
     default_alpha = 0.1
     default_epsilon = 0.1
 
+    # Manually set x-ticks to scale to number of iterations
+    x_vals = np.arange(0, iters, iters/10)
 
-    if agent_name == "qlearning":
+
+    if agent_name == "Q-Learning":
         plt.figure(figsize=(15, 10))
         plt.subplot(3, 1, 1)
         cum_rewards = []
@@ -145,21 +147,21 @@ def hyperparameter_search(env: Environment, random_seed: int, agent_name: str, i
                             gamma=gamma,
                             epsilon=default_epsilon,
                             random_seed=random_seed)
-            cum_rewards_gamma = agent.train(iters)[0]
+            cum_rewards_gamma = agent.train(iters)
             # Plot cum rewards over iterations
             cum_rewards.append(cum_rewards_gamma)
         
         # Plot cumulative rewards over iterations for each gamma value
         for i, gamma in enumerate(gamma_values):
-            plt.plot(cum_rewards[i], label=f'Gamma={gamma}')
+            plt.plot(x_vals, cum_rewards[i], label=f'Gamma={gamma}')
 
         plt.xlabel('Iterations')
         plt.ylabel('Cumulative Reward')
-        plt.title('Average Cumulative Rewards Over Training Iterations')
+        plt.title(f'Average Cumulative Rewards per gamma-value for {agent_name} agent')
         plt.legend()
         plt.grid(True)
-
         plt.subplot(3, 1, 2)
+
         cum_rewards = []
         for alpha in alpha_values:
             cum_rewards_alpha = []
@@ -169,17 +171,17 @@ def hyperparameter_search(env: Environment, random_seed: int, agent_name: str, i
                             gamma=default_gamma,
                             epsilon=default_epsilon,
                             random_seed=random_seed)
-            cum_rewards_alpha = agent.train(iters)[0]
+            cum_rewards_alpha = agent.train(iters)
             # Plot cum rewards over iterations
             cum_rewards.append(cum_rewards_alpha)
         
         # Plot cumulative rewards over iterations for each alpha value
         for i, alpha in enumerate(alpha_values):
-            plt.plot(cum_rewards[i], label=f'Alpha={alpha}')
+            plt.plot(x_vals, cum_rewards[i], label=f'Alpha={alpha}')
         
         plt.xlabel('Iterations')
         plt.ylabel('Cumulative Reward')
-        plt.title('Average Cumulative Rewards Over Training Iterations')
+        plt.title(f'Average Cumulative Rewards per alpha-value for {agent_name} agent')
         plt.legend()
         plt.grid(True)
 
@@ -193,23 +195,23 @@ def hyperparameter_search(env: Environment, random_seed: int, agent_name: str, i
                             gamma=default_gamma,
                             epsilon=epsilon,
                             random_seed=random_seed)
-            cum_rewards_epsilon = agent.train(iters)[0]
+            cum_rewards_epsilon = agent.train(iters)
             # Plot cum rewards over iterations
             cum_rewards.append(cum_rewards_epsilon)
         
         # Plot cumulative rewards over iterations for each epsilon value
         for i, epsilon in enumerate(epsilon_values):
-            plt.plot(cum_rewards[i], label=f'Epsilon={epsilon}')
+            plt.plot(x_vals, cum_rewards[i], label=f'Epsilon={epsilon}')
 
         plt.xlabel('Iterations')
         plt.ylabel('Cumulative Reward')
-        plt.title('Average Cumulative Rewards Over Training Iterations')
+        plt.title(f'Average Cumulative Rewards per epsilon-value for {agent_name} agent')
         plt.legend()
         plt.grid(True)
         plt.show()
 
     
-    elif agent_name == "value":
+    elif agent_name == "Value Iteration":
         plt.figure(figsize=(10, 7))
         cum_rewards = []
         for gamma in gamma_values:
@@ -217,22 +219,23 @@ def hyperparameter_search(env: Environment, random_seed: int, agent_name: str, i
                         state_space=make_states(env.grid.shape[0], env.grid.shape[1]), 
                         action_space=range(4),
                         gamma=gamma,
-                        random_seed=random_seed)
+                        sigma=sigma,
+                        random_seed=random_seed,)
             cum_rewards_gamma = agent.train(iters)[0]
             cum_rewards.append(cum_rewards_gamma)
 
         # Plot cumulative rewards over iterations for each gamma value
         for i, gamma in enumerate(gamma_values):
-            plt.plot(cum_rewards[i], label=f'Gamma={gamma}')
+            plt.plot(x_vals, cum_rewards[i], label=f'Gamma={gamma}')
 
         plt.xlabel('Iterations')
         plt.ylabel('Cumulative Reward')
-        plt.title('Average Cumulative Rewards Over Training Iterations')
+        plt.title(f'Average Cumulative Rewards per gamma-value for {agent_name} agent')
         plt.legend()
         plt.grid(True)
         plt.show()
        
-    elif agent_name == "mc":
+    elif agent_name == "Monte Carlo":
         plt.figure(figsize=(10, 7))
         cum_rewards = []
         for gamma in gamma_values:
@@ -240,37 +243,40 @@ def hyperparameter_search(env: Environment, random_seed: int, agent_name: str, i
                         num_actions=4,
                         gamma=gamma,
                         random_seed=random_seed)
-            cum_rewards_gamma = agent.train(iters)[0]
+            cum_rewards_gamma = agent.train(iters)
+            
             cum_rewards.append(cum_rewards_gamma)
-        
         # Plot cumulative rewards over iterations for each gamma value
         for i, gamma in enumerate(gamma_values):
-            plt.plot(cum_rewards[i], label=f'Gamma={gamma}')
+            plt.plot(x_vals, cum_rewards[i], label=f'Gamma={gamma}')
 
         plt.xlabel('Iterations')
         plt.ylabel('Cumulative Reward')
-        plt.title('Average Cumulative Rewards Over Training Iterations')
+        plt.title(f'Average Cumulative Rewards per gamma-value for {agent_name} agent')
         plt.legend()
         plt.grid(True)
         plt.show()
         
     else:
-        raise ValueError(f"Agent name doesn't exists")
+        raise ValueError(f"Agent name doesn't exist")
 
 
-def plot_all_grid_rewards(all_rewards, grid_paths, xlabel, ylabel, title):
+def plot_all_grid_rewards(all_rewards, grid_paths, xlabel, ylabel, title, iters):
     plt.figure(figsize=(10, 5))
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.title(title)
     plt.grid(True)
 
+    x_vals = np.arange(0, iters, iters/10)
+
     for rewards, grid in zip(all_rewards, grid_paths):
         grid_name = str(grid).split("/")[1].split(".")[0]
-        plt.plot(rewards, label=grid_name)
+        plt.plot(x_vals, rewards, label=grid_name)
     
     plt.legend()
     plt.show()
+
 
 def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
          sigma: float, random_seed: int, agent_name: str, gamma: float, alpha: float = None, 
@@ -314,11 +320,11 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
         else:
             raise ValueError(f"Agent name doesn't exists")
         
-        agent_name_clean = agent_args_name_map[agent_name]
+        agent_name_clean = agent_name_map[agent_name]
         results = agent.train(iters)
 
         if compare_grids:
-            cum_reward_per_grid.append(results[0])
+            cum_reward_per_grid.append(results)
 
         if plot_rewards:
             #Training        
@@ -328,10 +334,10 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
         
         if vis_matrix:
             print("Visualizing V matrix")
-            plot_v_matrix(agent, env.grid.shape, agent_name)
+            plot_v_matrix(agent, env.grid.shape, agent_name_clean)
 
         if hyperparameters_tuning:
-            hyperparameter_search(env, random_seed, agent_name, iters)
+            hyperparameter_search(env, random_seed, agent_name_clean, iters, sigma)
 
         if expl_tradeoff and len(results) > 1:
             plot_experiment(results[1], 'Iterations', 'Trade-off', 'Exploration/Exploitation trade-off')
@@ -340,7 +346,7 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
 
     if compare_grids:
         plot_all_grid_rewards(cum_reward_per_grid, grid_paths, 'Iterations', 
-                              'Cumulative Reward', f'Cumulative rewards per grid for {agent_name_clean} agent')
+                              'Cumulative Reward', f'Cumulative rewards per grid for {agent_name_clean} agent', iters)
 
 if __name__ == '__main__':
     args = parse_args()

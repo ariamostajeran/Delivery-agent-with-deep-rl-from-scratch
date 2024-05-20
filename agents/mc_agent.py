@@ -20,8 +20,6 @@ class MonteCarloAgent(BaseAgent):
         self.n_visits = np.zeros((self.num_states, num_actions))
         self.grid_width = self.env.grid.shape[1]
         self.random_seed = random_seed
-        self.exploitation_steps = 0
-        self.exploration_steps = 0
 
     def update(self, state_action_reward_list):
         """Updates the agent's q-values after each round of exploration"""
@@ -35,6 +33,7 @@ class MonteCarloAgent(BaseAgent):
 
             state_index = self.encode_state(state)
             
+            # Check only the first visit
             if (state, action) not in [(state, action) for state, action, _ in state_action_reward_list[:-idx]]:
                 # Increment the amount of observations for this state-action pair
                 self.n_visits[state_index, action] += 1
@@ -49,11 +48,9 @@ class MonteCarloAgent(BaseAgent):
     def take_action(self, state: tuple[int, int]) -> int:
 
         state_index = self.encode_state(state)
-        self.exploitation_steps += 1
         return np.argmax(self.q_values[state_index])
 
     def take_random_action(self, state: tuple[int, int]) -> int:
-        self.exploration_steps += 1
         return randint(0, self.num_actions - 1)
     
     def train(self, iters):
@@ -61,10 +58,8 @@ class MonteCarloAgent(BaseAgent):
 
         #Experiments
         cum_rewards = []
-        expl_tradeoffs = []
 
-
-        monitor_time = iters / 20
+        monitor_time = iters / 10
         cum_reward = 0
         for iteration in trange(iters):
             # Place agent randomly on grid (exploring starts)
@@ -95,8 +90,6 @@ class MonteCarloAgent(BaseAgent):
                 cum_rewards.append(cum_reward / monitor_time)  # mean of cum rewards of the past episodes
                 cum_reward = 0
             
-                expl_tradeoffs.append(self.exploration_steps/self.exploitation_steps)
-
             self.update(state_action_reward_list)
 
-        return (cum_rewards, expl_tradeoffs)
+        return cum_rewards

@@ -12,8 +12,6 @@ class QLearningAgent(BaseAgent):
         self.epsilon = epsilon
         self.q_values = np.zeros((self.num_states, num_actions))
         self.grid_width = self.env.grid.shape[1]
-        self.exploitation_steps = 0
-        self.exploration_steps = 0
         self.random_seed = random_seed
 
     def encode_state(self, state):
@@ -29,10 +27,8 @@ class QLearningAgent(BaseAgent):
 
     def take_action(self, state, **kwargs):
         if np.random.rand() < self.epsilon:
-            self.exploration_steps += 1
             return np.random.choice(range(self.num_actions))
         else:
-            self.exploitation_steps += 1
             state_index = self.encode_state(state)
             return np.argmax(self.q_values[state_index])
 
@@ -43,9 +39,8 @@ class QLearningAgent(BaseAgent):
 
         # Experiments
         cum_rewards = []
-        expl_tradeoffs = []
 
-        monitor_time = iters / 20
+        monitor_time = iters / 10
         cum_reward = 0
         for iteration in trange(iters):
             # print(" Iteration ", iter)
@@ -55,9 +50,10 @@ class QLearningAgent(BaseAgent):
                 action = self.take_action(state)
 
                 # The action is performed in the environment
-                state, reward, terminated, info, next_state = self.env.step(action)
+                next_state, reward, terminated, info = self.env.step(action)
 
                 self.update(state, next_state, reward, info["actual_action"])
+                state = next_state
                 cum_reward += reward
                 # If the final state is reached, stop.
                 if terminated or i == max_step - 1:
@@ -67,6 +63,4 @@ class QLearningAgent(BaseAgent):
                 cum_rewards.append(cum_reward / monitor_time) # mean of cum rewards of the past episodes
                 cum_reward = 0
 
-                expl_tradeoffs.append(self.exploration_steps/self.exploitation_steps)
-
-        return (cum_rewards, expl_tradeoffs)
+        return cum_rewards

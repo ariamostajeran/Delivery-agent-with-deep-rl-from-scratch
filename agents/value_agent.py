@@ -67,7 +67,7 @@ class ValueAgent(BaseAgent):
         state = self.env.reset()
 
         cum_rewards = []
-        monitor_time = iters / 20
+        monitor_time = iters / 10
         cum_reward = 0
 
         max_step = self.num_states * 2
@@ -92,4 +92,4 @@ class ValueAgent(BaseAgent):
                 cum_rewards.append(cum_reward / monitor_time)  # mean of cum rewards of the past episodes
                 cum_reward = 0
 
-        return (cum_rewards,)
+        return cum_rewards
