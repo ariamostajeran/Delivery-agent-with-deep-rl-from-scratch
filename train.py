@@ -52,7 +52,6 @@ def parse_args():
     p.add_argument("--vis_matrix", action="store_true", help="Visualize V or Q matrix")
     p.add_argument("--hyperparameters_tuning", action="store_true", help="Perform hyperparameters tuning")
     p.add_argument("--compare_grids", action="store_true", help="Perform hyperparameters tuning")
-    p.add_argument("--expl_tradeoff", action="store_true", help="Plot exploration/exploitation trade-off")
     return p.parse_args()
 
 agent_name_map = {
@@ -221,7 +220,7 @@ def hyperparameter_search(env: Environment, random_seed: int, agent_name: str, i
                         gamma=gamma,
                         sigma=sigma,
                         random_seed=random_seed,)
-            cum_rewards_gamma = agent.train(iters)[0]
+            cum_rewards_gamma = agent.train(iters)
             cum_rewards.append(cum_rewards_gamma)
 
         # Plot cumulative rewards over iterations for each gamma value
@@ -278,10 +277,12 @@ def plot_all_grid_rewards(all_rewards, grid_paths, xlabel, ylabel, title, iters)
     plt.show()
 
 
+
+
 def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
          sigma: float, random_seed: int, agent_name: str, gamma: float, alpha: float = None, 
          epsilon: float = None, plot_rewards: bool = False, vis_matrix: bool = False, 
-         hyperparameters_tuning: bool = False, expl_tradeoff: bool = False, compare_grids : bool = False):
+         hyperparameters_tuning: bool = False, compare_grids : bool = False):
     """Main loop of the program."""
 
     #Hyperparameters
@@ -333,7 +334,7 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
 
         if plot_rewards:
             #Training        
-            cum_rewards = results[0]
+            cum_rewards = results
             plot_experiment(cum_rewards, 'Iterations', 'Cumulative Reward', 
                             f'Cumulative rewards for {agent_name_clean} agent')
         
@@ -343,9 +344,6 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
 
         if hyperparameters_tuning:
             hyperparameter_search(env, random_seed, agent_name_clean, iters, sigma)
-
-        if expl_tradeoff and len(results) > 1:
-            plot_experiment(results[1], 'Iterations', 'Trade-off', 'Exploration/Exploitation trade-off')
 
         Environment.evaluate_agent(grid_fp=grid, agent=agent, max_steps=iters, sigma=env.sigma, random_seed=random_seed)
 
@@ -358,4 +356,4 @@ if __name__ == '__main__':
     main(args.GRID, args.no_gui, args.iter, args.fps, args.sigma, 
          args.random_seed, args.agent, args.gamma, args.alpha, 
          args.epsilon, args.plot_rewards, args.vis_matrix, 
-         args.hyperparameters_tuning, args.expl_tradeoff, args.compare_grids)
+         args.hyperparameters_tuning, args.compare_grids)

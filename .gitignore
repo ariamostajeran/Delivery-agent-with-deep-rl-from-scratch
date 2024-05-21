@@ -240,3 +240,6 @@ venv.bak/
 
 # results folder
 results/
+
+# data folder
+**/__pycache__/*
