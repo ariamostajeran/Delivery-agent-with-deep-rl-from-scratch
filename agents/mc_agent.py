@@ -43,31 +43,37 @@ class MonteCarloAgent(BaseAgent):
                 idx += 1
 
     def encode_state(self, state):
+        """Turns state into a number"""
         return state[0] * self.grid_width + state[1]
 
     def take_action(self, state: tuple[int, int]) -> int:
-
+        """Take the best action based on the how much value it returns"""
         state_index = self.encode_state(state)
         return np.argmax(self.q_values[state_index])
 
     def take_random_action(self, state: tuple[int, int]) -> int:
+        """Take a random action"""
         return randint(0, self.num_actions - 1)
     
     def train(self, iters):
-        max_step = self.num_states * 2
 
-        #Experiments
+        #Experiment data
         cum_rewards = []
-
         monitor_time = iters / 10
         cum_reward = 0
+
+        max_step = self.num_states * 2
+
+        # Start a new episode until we performed 'iters' episodes
         for iteration in trange(iters):
+
             # Place agent randomly on grid (exploring starts)
             state = self.env.reset()
 
             # List to store state-action history and corresponding rewards
             state_action_reward_list = []
 
+            # Perform a new step in this episode with a maximum of 'max_step' steps
             for step in range(max_step):
 
                 # First action will always be random
@@ -78,7 +84,10 @@ class MonteCarloAgent(BaseAgent):
                 else:
                     action = self.take_action(state)
 
+                # Perform the step in the environment
                 next_state, reward, terminated, _ = self.env.step(action)
+
+                # Collect experience from the step and move to the next state
                 state_action_reward_list.append((state, action, reward))
                 state = next_state
                 cum_reward += reward
@@ -86,10 +95,12 @@ class MonteCarloAgent(BaseAgent):
                 # If the final state is reached, stop.
                 if terminated:
                     break
+
             if iteration % monitor_time == 0:
                 cum_rewards.append(cum_reward / monitor_time)  # mean of cum rewards of the past episodes
                 cum_reward = 0
             
+            # Use experiences to compute the importance of state-action pairs
             self.update(state_action_reward_list)
 
         return cum_rewards

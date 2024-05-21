@@ -24,19 +24,20 @@ class ValueAgent(BaseAgent):
         self.pi = [0 for _ in range(len(self.state_space))]
         self.cols = env.grid.shape[0]
         self.nr_states = range(env.grid.shape[0] * env.grid.shape[1])
-        self.max_step = self.num_states * 2
         self.P = get_P_matrix(env.grid, len(self.nr_states), self.action_space, self.sigma, env.grid.shape[0], env.grid.shape[1])
         self.R = get_R_matrix(env.grid, len(self.nr_states), self.action_space, self.sigma)
         self.random_seed = random_seed
 
     def pointer(self, state: tuple[int, int]):
+        """Turns state into a number"""
         return state[0] + state[1] * self.cols
 
     def update(self):
+        """Update V matrix and policy such that they come closer to their true value each iteration"""
         V_new = copy.copy(self.V)
         pi_new = copy.copy(self.pi)
 
-        # Policy evaluation
+        # Update V matrix using the Bellman optimality equation
         for state in self.state_space:
             best_value = -math.inf
             for action in self.action_space:
@@ -46,7 +47,7 @@ class ValueAgent(BaseAgent):
             V_new[self.pointer(state)] = best_value
         self.V = V_new
 
-        # Policy control
+        # Update policy such that it takes the action that gives it the highest expected value
         for state in self.state_space:
             best_value, best_action = -math.inf, None
             for action in self.action_space:
@@ -58,33 +59,40 @@ class ValueAgent(BaseAgent):
         self.pi = pi_new
 
     def take_action(self, state: tuple[int, int]) -> int:
-        # Look up the best action to take for the given state in the policy
+        """Look up the best action to take for the given state in the policy"""
         return self.pi[self.pointer(state)]
     
     def train(self, iters):
+        """Train Value Iteration agent"""
 
         # Always reset the environment to initial state
         state = self.env.reset()
 
+        # Experiment data
         cum_rewards = []
         monitor_time = iters / 10
         cum_reward = 0
 
         max_step = self.num_states * 2
     
+        # Start a new episode until we performed 'iters' episodes
         for iteration in trange(iters):
 
-            for _ in range(max_step):
+            # Perform a new step in this episode with a maximum of 'max_step' steps
+            for i in range(max_step):
             
                 # Update expected value matrix and policy
                 self.update()
+
                 # Get best action to take based on updated policy
                 action = self.take_action(state)
+
                 # Perform the step in the environment
                 state, reward, terminated, _ = self.env.step(action)
                 cum_reward += reward
+
                 # Perform another run when target is reached
-                if terminated:
+                if terminated or i == max_step - 1:
                     self.env.reset()
                     break
                 

@@ -59,14 +59,13 @@ agent_name_map = {
 }
 
 def reward_fn(grid, agent_pos) -> float:
-    grid_size = grid.shape[0] * grid.shape[1]
     match grid[agent_pos]:
         case 0:  # Moved to an empty tile
             reward = -0.1
         case 1 | 2:  # Moved to a wall or obstacle
             reward = -1
         case 3:  # Moved to a target tile
-            reward = grid_size * 0.1 * 1.5 + 10
+            reward = 10
             # "Illegal move"
         case _:
             raise ValueError(f"Grid cell should not have value: {grid[agent_pos]}.",
@@ -80,11 +79,12 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
          hyperparameters_tuning: bool = False, compare_grids : bool = False):
     """Main loop of the program."""
 
-    #Hyperparameters
+    # Hyperparameters
     alpha = alpha if alpha is not None else 0.1
     gamma = gamma
     epsilon = epsilon if epsilon is not None else 0.1
 
+    # Setup variables for hyperparameter experiment
     if compare_grids:
         plot_rewards = False
         cum_reward_per_grid = [] 
@@ -94,6 +94,7 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
         env = Environment(grid, no_gui, sigma=sigma, target_fps=fps,
                           random_seed=random_seed, reward_fn=reward_fn)
 
+        # Initialize agent choosen in the terminal
         if agent_name == "qlearning":
             min_epsilon = 0.0001
             decay = 0.95
@@ -124,6 +125,7 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
         agent_name_clean = agent_name_map[agent_name]
         results = agent.train(iters)
 
+        # Update information for all choosen experiments
         if compare_grids:
             cum_reward_per_grid.append(results)
 
@@ -140,8 +142,10 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
         if hyperparameters_tuning:
             hyperparameter_search(env, random_seed, agent_name_clean, iters, sigma)
 
+        # Evaluate agent
         Environment.evaluate_agent(grid_fp=grid, agent=agent, max_steps=iters, sigma=env.sigma, random_seed=random_seed)
 
+    # Show results of hyperparameter testing
     if compare_grids:
         plot_all_grid_rewards(cum_reward_per_grid, grid_paths, 'Iterations', 
                               'Cumulative Reward', f'Cumulative rewards per grid for {agent_name_clean} agent', iters)
