@@ -134,7 +134,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.pyc 
-**/__pycache__
+**/__pycache__/*
 **/*.pyc
 
 
@@ -240,6 +240,3 @@ venv.bak/
 
 # results folder
 results/
-
-# data folder
-**/__pycache__/*

@@ -4,7 +4,7 @@ from agents import BaseAgent
 from tqdm import trange
 
 class QLearningAgent(BaseAgent):
-    def __init__(self, env, num_actions, alpha, gamma, epsilon, min_epsilon, decay, random_seed):
+    def __init__(self, env, num_actions, alpha, gamma, epsilon, random_seed, min_epsilon=0.0001, decay=0):
         super().__init__(env)
         self.num_actions = num_actions
         self.alpha = alpha
@@ -20,7 +20,7 @@ class QLearningAgent(BaseAgent):
     def encode_state(self, state):
         return state[0] * self.grid_width + state[1]
     def update_epsilon(self):
-        self.epsilon = min(self.epsilon*self.decay, self.min_epsilon)
+        self.epsilon = max(self.epsilon*self.decay, self.min_epsilon)
     def update(self, state, next_state, reward, action):
         # Q-Learning update rule
         state_index = self.encode_state(state)
@@ -63,6 +63,11 @@ class QLearningAgent(BaseAgent):
                 if terminated or i == max_step - 1:
                     self.env.reset()
                     break
+            
+            # Update epsilon
+            if iteration %  ((iters * 2/3) / 20) == 0:
+                self.update_epsilon()
+
             if iteration % monitor_time == 0:
                 cum_rewards.append(cum_reward / monitor_time) # mean of cum rewards of the past episodes
                 cum_reward = 0
