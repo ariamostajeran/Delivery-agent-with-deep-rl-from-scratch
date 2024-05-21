@@ -211,11 +211,18 @@ class Environment:
                 self.grid[new_pos] = 0
                 if np.sum(self.grid == 3) == 0:
                     self.terminal_state = True
+
+                self.terminal_state = True
                 self.info["target_reached"] = True
                 self.world_stats["total_targets_reached"] += 1
                 self.info["agent_moved"] = True
                 self.world_stats["total_agent_moves"] += 1
                 # Otherwise, the agent can't move and nothing happens
+            case 4:
+                self.agent_pos = new_pos
+                self.info["agent_moved"] = True
+                self.world_stats["total_agent_moves"] += 1
+
             case _:
                 raise ValueError(f"Grid is badly formed. It has a value of "
                                  f"{self.grid[new_pos]} at position "
