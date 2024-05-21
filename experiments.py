@@ -67,13 +67,13 @@ def hyperparameter_search(env: Environment, random_seed: int, agent_name: str, i
     gamma_values = [0.5, 0.8, 0.95]
     alpha_values = [0.1, 0.2, 0.3]
 
-    epsilon_values = [0.1, 0.8, 0.8]
-    epsilon_decay_values = [0, 0.95, 0.99]
+    epsilon_values = [0.1, 0.2, 0.05, 1, 0.5]
+    epsilon_decay_values = [1, 1, 1, 0.995, 0.999]
+    default_epsilon = 0.1
 
     # Set default values
     default_gamma = 0.9
     default_alpha = 0.1
-    default_epsilon = 0.1
 
     # Manually set x-ticks to scale to number of iterations
     x_vals = np.arange(0, iters, iters/10)
@@ -85,7 +85,7 @@ def hyperparameter_search(env: Environment, random_seed: int, agent_name: str, i
         cum_rewards = []
         for gamma in gamma_values:
             cum_rewards_gamma = []
-            agent = QLearningAgent(env, 
+            agent = QLearningAgent(env,
                             num_actions=len(range(4)),
                             alpha=default_alpha,
                             gamma=gamma,
@@ -109,7 +109,7 @@ def hyperparameter_search(env: Environment, random_seed: int, agent_name: str, i
         cum_rewards = []
         for alpha in alpha_values:
             cum_rewards_alpha = []
-            agent = QLearningAgent(env, 
+            agent = QLearningAgent(env,
                             num_actions=len(range(4)),
                             alpha=alpha,
                             gamma=default_gamma,
@@ -122,7 +122,7 @@ def hyperparameter_search(env: Environment, random_seed: int, agent_name: str, i
         # Plot cumulative rewards over iterations for each alpha value
         for i, alpha in enumerate(alpha_values):
             plt.plot(x_vals, cum_rewards[i], label=f'Alpha={alpha}')
-        
+
         plt.xlabel('Iterations')
         plt.ylabel('Cumulative Reward')
         plt.title(f'Average Cumulative Rewards per alpha-value for {agent_name} agent')
@@ -139,7 +139,7 @@ def hyperparameter_search(env: Environment, random_seed: int, agent_name: str, i
                             gamma=default_gamma,
                             epsilon=epsilon,
                             decay= epsilon_decay_values[i],
-                            min_epsilon=0.0001,
+                            min_epsilon=0.01,
                             random_seed=random_seed)
             cum_rewards_epsilon = agent.train(iters)
             # Plot cum rewards over iterations
