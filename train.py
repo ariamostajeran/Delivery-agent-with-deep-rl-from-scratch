@@ -59,14 +59,14 @@ agent_name_map = {
 }
 
 def reward_fn(grid, agent_pos) -> float:
-
+    grid_size = grid.shape[0] * grid.shape[1]
     match grid[agent_pos]:
         case 0:  # Moved to an empty tile
             reward = -0.1
         case 1 | 2:  # Moved to a wall or obstacle
             reward = -1
         case 3:  # Moved to a target tile
-            reward = 10
+            reward = grid_size * 0.1 * 1.5 + 10
             # "Illegal move"
         case _:
             raise ValueError(f"Grid cell should not have value: {grid[agent_pos]}.",
