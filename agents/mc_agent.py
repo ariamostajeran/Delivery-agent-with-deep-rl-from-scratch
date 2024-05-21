@@ -20,6 +20,7 @@ class MonteCarloAgent(BaseAgent):
         self.n_visits = np.zeros((self.num_states, num_actions))
         self.grid_width = self.env.grid.shape[1]
         self.random_seed = random_seed
+        self.epsilon = 0.5
 
     def update(self, state_action_reward_list):
         """Updates the agent's q-values after each round of exploration"""
@@ -41,19 +42,27 @@ class MonteCarloAgent(BaseAgent):
                 # Updating q-values
                 self.q_values[state_index, action] += G_value / self.n_visits[state_index, action]
                 idx += 1
+                # Decay epsilon
+                self.epsilon_decay(decay_rate=0.999)
 
     def encode_state(self, state):
         """Turns state into a number"""
         return state[0] * self.grid_width + state[1]
-
-    def take_action(self, state: tuple[int, int]) -> int:
-        """Take the best action based on the how much value it returns"""
-        state_index = self.encode_state(state)
-        return np.argmax(self.q_values[state_index])
-
     def take_random_action(self, state: tuple[int, int]) -> int:
         """Take a random action"""
         return randint(0, self.num_actions - 1)
+    
+    def epsilon_decay(self, decay_rate):
+        """Epsilon decay function """
+        self.epsilon = self.epsilon * decay_rate
+
+    def take_action(self, state: tuple[int, int]) -> int:
+        """Take the best action based on the Q-value (following epsilon-greedy policy)"""
+        if np.random.rand() < self.epsilon:
+            return randint(0,3)
+        else:
+            state_index = self.encode_state(state)
+            return np.argmax(self.q_values[state_index])
     
     def train(self, iters):
 
