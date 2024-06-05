@@ -10,6 +10,7 @@ from warnings import warn
 from time import time, sleep
 from datetime import datetime
 from world.helpers import save_results, action_to_direction
+from world.table import Table
 
 try:
     from agents import BaseAgent
@@ -84,7 +85,7 @@ class Environment:
         self.terminal_state = False
         self.sigma = sigma
         self.kitchen_cells = []
-        self.customers = []
+        self.tables = []
         # Set up reward function
         if reward_fn is None:
             warn("No reward function provided. Using default reward.")
@@ -101,12 +102,14 @@ class Environment:
         self.gui = None
 
         self.grid = Grid.load_grid(self.grid_fp).cells
-        for row in range(self.grid.shape[0]):
-            for col in range(self.grid.shape[1]):
-                if self.grid[row, col] == 6:  # 6 represents a table cell
-                    self.customers.append((row, col))
-                if self.grid[row, col] == 5:
-                    self.kitchen_cells.append((row, col))
+
+        for col in range(self.grid.shape[0]):
+            for row in range(self.grid.shape[1]):
+                 # 6 represents a table cell. We also check that table has not been added
+                if self.grid[col, row] == 6 and self.get_table(col, row) is None: 
+                        self.tables.append(Table(self.grid, col, row))
+                if self.grid[col, row] == 5:
+                    self.kitchen_cells.append((col, row))
 
     def _reset_info(self) -> dict:
         """Resets the info dictionary.
@@ -325,6 +328,13 @@ class Environment:
 
     def calc_manhattan_distance(self, pos1, pos2):
         return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
+    
+    def get_table(self, col, row):
+        for table in self.tables:
+            if (col, row) in table.cells:
+                return table
+        
+        return None
 
     @staticmethod
     def _default_reward_function(grid, agent_pos, delivery_pickup_case=None) -> float:
