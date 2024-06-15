@@ -10,6 +10,7 @@ import torch
 import math
 from agents.double_dqn_agent import DoubleDQNAgent
 from utils import *
+from carrying_capacity_experiment import hyperparameter_search
 
 try:
     from world import Environment
@@ -50,6 +51,8 @@ def parse_args():
                 help="Total number of plates to deliver per episode.")
     p.add_argument("--capacity", type=int, default=3,
             help="Number of plates an agent can carry at a time.")
+    p.add_argument("--hyperparameters_tuning", action="store_true", 
+                   help="Perform hyperparameters tuning")
     return p.parse_args()
 
 
@@ -71,7 +74,7 @@ logger = Logger(print_on=False)
 
 def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
          sigma: float, random_seed: int, agent_type: str, load_model: Path, 
-         trainable: bool, n_plates: int, capacity: int):
+         trainable: bool, n_plates: int, capacity: int, hyperparameters_tuning: bool=False):
     """Main loop of the program."""
     writer = SummaryWriter()
 
@@ -149,6 +152,10 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
                     print(f'Total Reward for episode {ep}: {total_reward}')
                 if ep%100 == 0:
                     agent.save_model(model_filename)
+
+            if hyperparameters_tuning:
+                hyperparameter_search(env, random_seed, iters, sigma)
+
             Environment.evaluate_agent(grid_fp=grid, agent=agent, max_steps=iters, sigma=env.sigma, random_seed=random_seed)
             agent.save_model(model_filename)
     writer.close()

@@ -5,7 +5,7 @@ import torch.optim as optim
 import numpy as np
 import matplotlib.cm as cm
 from agents.double_dqn_agent import DoubleDQNAgent #Currently being worked on
-from value_agent_functions import *
+#from value_agent_functions import *
 try:
     from world import Environment
     from agents.random_agent import RandomAgent
