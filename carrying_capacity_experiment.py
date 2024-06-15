@@ -1,4 +1,7 @@
 import matplotlib.pyplot as plt
+import torch
+import torch.nn as nn
+import torch.optim as optim
 import numpy as np
 import matplotlib.cm as cm
 from agents.double_dqn_agent import DoubleDQNAgent #Currently being worked on
@@ -61,7 +64,12 @@ def hyperparameter_search(env: Environment, random_seed: int, agent_name: str, i
     default_alpha = 0.4
     default_epsilon_start = 0.5
     default_epsilon_end = 0.01
-    default_decay_steps = 10**5 #Was not discovered during A1. Test if this is a suitable value
+    default_capacity = 3
+    default_decay_steps = 10**3 #Was not discovered during A1. Test if this is a suitable value
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    epsilon_values = [0.1, 0.2, 0.05, 1, 0.5]
+    gamma_values = [0.5, 0.8, 0.95]
+    epsilon_decay_values = [1, 0.999, 0.995]
 
     # Manually set x-ticks to scale to number of iterations
     x_vals = np.arange(0, iters, iters/10)
@@ -73,10 +81,10 @@ def hyperparameter_search(env: Environment, random_seed: int, agent_name: str, i
             agent = DoubleDQNAgent(env,
                                    decay_steps=default_decay_steps,
                                    gamma=default_gamma,
-                                   device=None, #NOTE: This parameter must be changed to a suitable value
+                                   device=device, 
                                    start_epsilon=default_epsilon_start,
                                    end_epsilon=default_epsilon_end,
-                                   carrying_capacity=capacity, #NOTE: This is currently not yet a parameter
+                                   capacity=capacity,
                                    n_actions=4,
                                    batch_size=128)
             cum_rewards_gamma = agent.train(iters)
@@ -92,6 +100,35 @@ def hyperparameter_search(env: Environment, random_seed: int, agent_name: str, i
         plt.legend()
         plt.grid(True)
         plt.show()
+
+        #Hyperparameter tuning for gamma
+        plt.figure(figsize=(10, 7))
+        cum_rewards = []
+        for gamma in gamma_values:
+            agent = DoubleDQNAgent(env,
+                                   decay_steps=default_decay_steps,
+                                   gamma=gamma,
+                                   device=device, 
+                                   start_epsilon=default_epsilon_start,
+                                   end_epsilon=default_epsilon_end,
+                                   capacity=default_capacity,
+                                   n_actions=4,
+                                   batch_size=128)
+            
+            cum_rewards_gamma = agent.train(iters)
+            cum_rewards.append(cum_rewards_gamma)
+
+        # Plot cumulative rewards over iterations for each gamma value
+        for i, gamma in enumerate(gamma_values):
+            plt.plot(x_vals, cum_rewards[i], label=f'Gamma={gamma}')
+
+        plt.xlabel('Iterations')
+        plt.ylabel('Cumulative Reward')
+        plt.title(f'Average Cumulative Rewards per gamma-value for {agent_name} agent')
+        plt.legend()
+        plt.grid(True)
+        plt.show()
+    
 
     else:
         raise ValueError(f"Agent name doesn't exist")
@@ -111,3 +148,6 @@ def plot_all_grid_rewards(all_rewards, grid_paths, xlabel, ylabel, title, iters)
     
     plt.legend()
     plt.show()
+
+if __name__=='__main__':
+    hyperparameter_search(env, random_seed, agent_name_clean, iters, sigma)
