@@ -1,4 +1,4 @@
-# Reinforcement Learning Assignment 2
+# Delivery Agent
 
 This project involves the development and evaluation of a reinforcement learning-based autonomous delivery robot functioning as a waiter in a restaurant setting. The robot's tasks include picking up plates from the kitchen, navigating the restaurant environment, and delivering food to designated tables. This project builds on the previous assignment, incorporating more complex environments and advanced RL techniques.
 
